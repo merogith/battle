@@ -164,7 +164,8 @@ for (const suite of suites) {
 }
 
 const parsed = new JSDOM(await readFile(join(root, 'battle.html'), 'utf8'));
-const inventory = Array.from(parsed.window.document.querySelectorAll('.screen[id], .modal[id]')).map(node => ({
+const staticViews = '.screen[id], .modal[id], [role="dialog"][id], [role="alertdialog"][id], dialog[id]';
+const inventory = Array.from(parsed.window.document.querySelectorAll(staticViews)).map(node => ({
   id: node.id,
   label: node.getAttribute('aria-label') || node.querySelector('h1,h2')?.textContent.trim() || node.id,
   kind: node.classList.contains('screen') ? 'screen' : 'dialog',

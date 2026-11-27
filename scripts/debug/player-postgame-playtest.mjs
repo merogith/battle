@@ -263,7 +263,7 @@ try {
         await page.setViewportSize({ width: 850, height: 430 });
         assert.equal(await entry.locator('h2').isVisible(), true);
         await record(page, 'safari-underground', 'pokedex-entry-landscape');
-        await page.locator('#screen-collection .story-collection-head').getByRole('button', { name: 'Back' }).click();
+        await entry.getByRole('button', { name: /Back to Catch/ }).click();
         assert.equal(await finish.isVisible(), true, 'Back returns to the current catch result');
         await page.setViewportSize({ width: 430, height: 850 });
       }
@@ -276,6 +276,13 @@ try {
     const leave = button(catchScreen, /Leave Safari/);
     const exitCopy = await leave.getAttribute('title');
     await leave.click();
+    const exitReceipt = page.locator('#modal-game-alert');
+    await exitReceipt.waitFor({ timeout: 2500 });
+    assert.match(await exitReceipt.innerText(), /warden takes back your unused Safari Balls/i);
+    assert.equal((await story(page, ['safari'])).safari.session, undefined, 'leaving clears the active visit');
+    const savedSafari = await page.evaluate(() => JSON.parse(localStorage.getItem('pbs_story_save')).safari);
+    assert.equal(savedSafari.session, undefined, 'leaving clears the saved visit');
+    await record(page, 'safari-underground', 'exit-receipt');
     await advanceTo(page, safari);
     assert.deepEqual((await story(page, ['balls'])).balls, before.balls, 'Safari Balls do not touch inventory');
 
@@ -302,7 +309,7 @@ try {
     const beforeSale = await story(page, ['gold', 'team', 'pcBox', 'pokedex']);
     const price = Number((await sell.innerText()).replace(/\D/g, ''));
     await sell.click();
-    assert.match(await confirmation.innerText(), /cannot be undone/i);
+    assert.match(await confirmation.innerText(), /sale is final/i);
     await button(confirmation, 'OK').click();
     const afterSale = await story(page, ['gold', 'team', 'pcBox', 'pokedex']);
     const count = slot => slot.team.length + (slot.pcBox?.length || 0);

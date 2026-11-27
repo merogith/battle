@@ -13,6 +13,7 @@ before(async () => {
     setItem:(k,v)=>{if(fail?.(k,v))throw new Error('Quota exceeded');store.set(k,String(v));},
     removeItem:k=>store.delete(k),clear:()=>store.clear(),
   }});
+  W.eval(readFileSync(new URL('../../data/story/adventure-progress.js',import.meta.url),'utf8'));
   W.eval(readFileSync(new URL('../../game-upgrades.js',import.meta.url),'utf8'));
   G = W.GameUpgrades;
 });
@@ -192,7 +193,6 @@ test('a save from another tab cannot be silently overwritten by stale progress',
 });
 
 test('an earlier backup from the same journey keeps its recorded chapter choices', () => {
-  W.eval(readFileSync(new URL('../../data/story/adventure-progress.js', import.meta.url), 'utf8'));
   const progress = W.AdventureProgress;
   const runId = progress.createRunId();
   Object.assign(W.StoryMode.state, { adventureRunId: runId, runSeed: 17, storyChoices: {} });
@@ -206,6 +206,36 @@ test('an earlier backup from the same journey keeps its recorded chapter choices
   const restored = JSON.parse(store.get('pbs_story_meta'));
   assert.equal(restored.completedRuns, 0);
   assert.equal(restored.adventureArchive.runs[runId].choices['chapter-1'], 'listen');
+});
+
+test('a backup whose run ID collides across seeds retains each journey separately', () => {
+  const progress = W.AdventureProgress;
+  const id = progress.createRunId();
+  const localChoices = { 'adventure.chapter-1': 'listen', 'adventure.secret.chapter-1': true };
+  const incomingChoices = { 'adventure.chapter-2': 'act' };
+  const records = (seed, storyChoices) => progress.record(null, { runId: id, seed, storyChoices }).archive;
+  Object.assign(W.StoryMode.state, { adventureRunId: id, runSeed: 22, storyChoices: {}, gold: 4300 });
+  const backup = G.makeBackup();
+  backup.entries.pbs_story_meta = { adventureArchive: records(22, incomingChoices) };
+  const local = records(21, localChoices);
+  store.set('pbs_story_meta', JSON.stringify({ adventureArchive: local }));
+  assert.equal(G.restoreBackup(backup), true);
+  const saved = JSON.parse(store.get('pbs_story_save'));
+  assert.notEqual(saved.adventureRunId, id);
+  assert.deepEqual(saved.storyChoices, incomingChoices);
+  assert.equal(saved.gold, 4300);
+  const restored = JSON.parse(store.get('pbs_story_meta')).adventureArchive;
+  assert.deepEqual(restored.runs[id], clone(local.runs[id]));
+  assert.equal(restored.runs[saved.adventureRunId].seed, 22);
+  assert.deepEqual(restored.runs[saved.adventureRunId].choices, { 'chapter-2': 'act' });
+});
+
+test('a newer save stays intact when an old runtime attempts to save before receiving a storage event', () => {
+  const raw = JSON.stringify({ ...clone(W.StoryMode.state), version: W.__STORY_SAVE_VER + 1, gold: 4100 });
+  store.set('pbs_story_save', raw);
+  assert.equal(W.StoryMode.upgrades.save(), false);
+  assert.equal(store.get('pbs_story_save'), raw);
+  assert.match(W.__storySaveError, /newer game version/);
 });
 
 function defeatWithQuotaError() {
@@ -590,8 +620,9 @@ test('delayed release and duplicate sale confirmations resolve stable identities
   W.StoryMode.state.pcBox.reverse();resolvers.shift()(true);await release;
   assert.deepEqual(clone(W.StoryMode.state.pcBox.map(m=>m.id)),['third']);
   const first=W.StoryMode.pcSell('third'),second=W.StoryMode.pcSell('third');
+  assert.equal(resolvers.length,1,'duplicate clicks leave the original confirmation open');
   resolvers.shift()(true);await first;
-  const gold=W.StoryMode.state.gold;resolvers.shift()(true);await second;
+  const gold=W.StoryMode.state.gold;await second;
   assert.equal(W.StoryMode.state.gold,gold);assert.equal(W.StoryMode.state.pcBox.length,0);
 });
 

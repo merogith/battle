@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { offlinePack } from './build-release-graph.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -56,12 +57,6 @@ const WALK_DIRS = ['sprites', 'music', 'data', 'fonts', 'icons', 'vendor'];
 const EXCLUDE_URLS = new Set(['vendor/howler.min.js']);
 // Menu and battle views use WebP. Keep the original PNGs as editing sources.
 const BACKGROUND_SOURCE = /^sprites\/backgrounds\/(?:menu\/menu_bg(?:_[a-z]+)?|battle\/(?:portrait|landscape)\/bg_[a-z]+)\.png$/;
-function assetPack(url) {
-  if (url === 'sprites/compact-frames.bin') return 'compact';
-  if (/^sprites\/gen5ani(?:-back)?(?:-shiny)?\//.test(url)
-      || /^music\/(?:battle_anims\/|background\/background[123]\.mp3$|themes\/Theme[134]\.mp3$)/.test(url)) return 'full';
-  return undefined;
-}
 // Top-level boot files (explicit — not walked).
 const BOOT_FILES = [
   'battle.html', 'index.html', 'manifest.webmanifest', 'game-update.js', 'home-menu.css', 'game-upgrades.js', 'game-upgrades.css',
@@ -110,7 +105,7 @@ const normalizedSw=fs.readFileSync(swPath,'utf8').replace(/const CACHE_VERSION =
 const releaseHash=crypto.createHash('sha256').update(normalizedSw);
 for(const full of publishedPaths.filter(p=>p!==swPath).sort()) {
   const url = toUrl(path.relative(ROOT, full));
-  releaseHash.update(url).update(assetPack(url) || '').update(fs.readFileSync(full));
+  releaseHash.update(url).update(offlinePack(url) || '').update(fs.readFileSync(full));
 }
 const releaseVersion='battle-v5-'+releaseHash.digest('hex').slice(0,12);
 fs.writeFileSync(swPath,normalizedSw.replace("const CACHE_VERSION = 'RELEASE';",`const CACHE_VERSION = '${releaseVersion}';`));
@@ -124,7 +119,7 @@ for (const full of publishedPaths) {
   seen.add(url);
   const bytes = fs.statSync(full).size;
   totalBytes += bytes;
-  const pack = assetPack(url);
+  const pack = offlinePack(url);
   files.push({ u: url, h: hashFile(full), b: bytes, ...(pack ? { p: pack } : {}) });
 }
 files.sort((a, b) => (a.u < b.u ? -1 : a.u > b.u ? 1 : 0));

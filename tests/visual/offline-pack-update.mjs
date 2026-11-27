@@ -375,7 +375,11 @@ try {
     assert.equal(await page.evaluate(async path => !!(await caches.match(path)), corePath), true);
 
     const mediaPath = titleRelease.probe.u;
-    assert.equal(await page.evaluate(async path => (await caches.open('battle-assets')).delete(path), mediaPath), true);
+    assert.equal(await page.evaluate(async path => {
+        const cache = await caches.open('battle-assets');
+        const key = (await cache.keys()).find(request => new URL(request.url).pathname === `/${path}`);
+        return Boolean(key && await cache.delete(key));
+    }, mediaPath), true);
     await (await packAction(page)).click();
     const repairMedia = page.getByRole('button', { name: 'Repair download', exact: true });
     await repairMedia.waitFor({ state: 'visible' });

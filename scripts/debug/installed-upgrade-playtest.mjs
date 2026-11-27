@@ -15,6 +15,7 @@ const { values } = parseArgs({ options: {
   baseline: { type: 'string' },
   'baseline-dist': { type: 'string' },
   'download-timeout-ms': { type: 'string', default: '360000' },
+  'legacy-only': { type: 'boolean' },
   dist: { type: 'string', default: 'dist' },
   out: { type: 'string', default: 'agent-state/playthrough/implementation-installed-upgrade' },
   rollback: { type: 'boolean' },
@@ -63,7 +64,7 @@ const transfers = [];
 const offlineNetworkAttempts = [];
 const server = createServer((request, response) => {
   const name = decodeURI(new URL(request.url, 'http://localhost').pathname.slice(1)) || 'index.html';
-  if (phase === 'offline-continue' || phase === 'offline-rollback') {
+  if (phase === 'offline-continue' || phase === 'offline-rollback' || phase === 'offline-cold-arena') {
     // Chromium may still check for service worker updates outside the emulated
     // page connection. Drop every connection here to simulate a real outage.
     offlineNetworkAttempts.push(name);
@@ -257,6 +258,50 @@ let browser;
 let page;
 try {
   browser = await chromium.launch({ executablePath: process.env.BATTLE_TEST_CHROMIUM });
+  if (!values['legacy-only']) {
+    phase = 'cold-title-check';
+    isBaseline = false;
+    const cold = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    try {
+      const title = await cold.newPage();
+      title.on('pageerror', error => report.errors.push(error.message));
+      const initial = await title.goto(origin + '/', { waitUntil: 'load' });
+      assert.equal(initial.fromServiceWorker(), false);
+      assert.equal(await title.evaluate(async () => Boolean(await navigator.serviceWorker.getRegistration())), false);
+      const check = title.getByRole('button', { name: 'Check for updates', exact: true });
+      await cold.setOffline(true);
+      await check.click();
+      await title.getByText('Connect to the internet and try again.', { exact: true }).waitFor();
+      await cold.setOffline(false);
+      await check.click();
+      const ready = 'The game is up to date.';
+      await title.getByText(ready, { exact: true }).waitFor({ timeout: 60000 });
+      report.coldTitle = await title.evaluate(async ({ version, ready }) => ({
+        status: document.getElementById('title-update-status')?.textContent,
+        controlled: Boolean(navigator.serviceWorker.controller),
+        shell: (await caches.keys()).includes(`${version}-shell`),
+        optionalPack: (await caches.keys()).includes('battle-assets'),
+        ready,
+      }), { version: newer.version, ready });
+      assert.deepEqual(report.coldTitle, { status: ready, controlled: true, shell: true, optionalPack: false, ready });
+      phase = 'offline-cold-arena';
+      await cold.setOffline(true);
+      await title.locator('#menu-more-play-summary').click();
+      await title.getByRole('link', { name: 'Competitive Arena', exact: true }).click();
+      await title.getByRole('button', { name: 'Start battle' }).click();
+      await title.getByRole('heading', { name: 'Choose your lead' }).waitFor();
+      await title.getByRole('button', { name: /Great Tusk.*Lead/ }).click();
+      await title.locator('#moves button:enabled').first().click();
+      await title.waitForFunction(() => !document.getElementById('result')?.hidden
+        || document.getElementById('actions')?.dataset.phase === 'replace'
+        || document.getElementById('turn')?.textContent === 'Turn 2');
+      report.coldOfflineArena = true;
+    } finally {
+      await cold.close();
+    }
+  }
+  phase = 'baseline-install';
+  isBaseline = true;
   const context = await browser.newContext({ viewport: { width: 430, height: 880 },
     hasTouch: true, isMobile: true, reducedMotion: 'reduce' });
   await context.route('**/*', route =>
@@ -265,6 +310,13 @@ try {
     if (!localStorage.getItem('pbs_settings')) {
       localStorage.setItem('pbs_settings', JSON.stringify({ musicEnabled: false, soundEnabled: false, storyTypewriter: false }));
     }
+    window.__offlineTestMessages = [];
+    navigator.serviceWorker?.addEventListener('message', ({ data }) => {
+      if (!['CACHE_STATE', 'SYNC_PLAN', 'SYNC_PROGRESS', 'SYNC_DONE'].includes(data?.type)) return;
+      const { type, status, batchId, complete, applied, failed, fetchCount, digest } = data;
+      window.__offlineTestMessages.push({ type, status, batchId, complete, applied, failed, fetchCount, digest });
+      if (window.__offlineTestMessages.length > 50) window.__offlineTestMessages.shift();
+    });
   });
   page = await context.newPage();
   page.on('pageerror', error => report.errors.push(error.message));
@@ -348,10 +400,10 @@ try {
     phase = 'rollback-activate';
     isBaseline = true;
     await context.setOffline(false);
-    await page.evaluate(async () => {
-      const registration = await navigator.serviceWorker.getRegistration();
-      registration.update().catch(console.warn);
-    });
+    // A registration check alone only stages the older shell. Exercise the
+    // same explicit handoff a player uses from Settings while their game is open.
+    await page.evaluate(() => window.openOfflineSettings());
+    await page.getByRole('button', { name: 'Check for updates', exact: true }).click({ timeout: 45000 });
     await install(page, older.version, { replaces: newer.version });
     report.rollbackNavigations = [];
     report.rollbackBattleHash = await confirmPackageDocument(page, {
@@ -378,6 +430,7 @@ try {
   report.failedPhase = phase;
   if (page) {
     report.offlinePanelAtFailure = await page.locator('#offline-dl-panel').innerText({ timeout: 1000 }).catch(() => null);
+    report.offlineMessagesAtFailure = await page.evaluate(() => window.__offlineTestMessages).catch(() => null);
     await snapshot(page, `failed-${phase}`).catch(() => {});
   }
   throw error;
@@ -386,7 +439,8 @@ try {
   server.closeAllConnections();
   await new Promise(resolveClose => server.close(resolveClose));
   report.transfers = Object.fromEntries(
-    ['baseline-install', 'baseline-download', 'baseline-story', 'candidate-activate', 'candidate-download', 'offline-continue',
+    ['cold-title-check', 'offline-cold-arena', 'baseline-install', 'baseline-download', 'baseline-story',
+      'candidate-activate', 'candidate-download', 'offline-continue',
       ...(values.rollback ? ['rollback-activate', 'offline-rollback'] : [])]
       .map(name => [name, summarize(name)])
   );

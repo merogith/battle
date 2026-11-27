@@ -71,7 +71,7 @@ writing — they will drift as work proceeds.
 |---|---|
 | Map | Linear city pipeline (existing `STORY_EVENTS_RAW`, 67 rows / idx 0–66, unchanged). **Route nodes** appear as virtual interrupts between cities (strategy A — no new timeline rows). |
 | Wild | Forced encounter per route node. Single mon, weaker grade pool than adjacent battles. |
-| Safari Zone | Story-unlocked location. First visit free; subsequent visits cost gold. Continuous random encounters up to 6 per run. Mons can flee on missed throws. Better grade mix than wild routes. |
+| Safari Zone | City 5 and the Crucible. First visit free. Later visits cost 10,000G. Ten Safari Balls and up to ten encounters per visit, with stronger grades as badges accumulate. |
 | Catch | Pure minigame — no fight, no HP, no status. `chance = species.catchRate × ballMult`. Mons can flee. |
 | Balls | PokéBall 1.0×, Great 1.5×, Ultra 2.0×, Master ∞. Start the run with 5 PokéBalls. |
 | Ball sources | PokéMart sells PokéBalls (every city). Department Store sells Great Balls (existing City6/City8). Ultra Balls scatter through gym/Elite/Champion victory bundles and Frontier milestones (substantially more than the original "×2 total" draft; the loosened economy hooks into Underground gold-sink balance). Master Ball ×1 from the villain story-track boss (for the roaming legendary). |
@@ -140,14 +140,14 @@ The Safari Zone replicates the canonical gameplay loop (no battles, only Safari 
 
 | Aspect | Value |
 |---|---|
-| Unlock | City 4 ("Wilderness town") action button — both pre- and post-Gym-4 hub rows carry it. |
-| Location | City 4 only in the main timeline. Post-HoF access is via the Crucible (which also exposes the same screen). |
+| Unlock | City 5 after four badges. |
+| Location | Glasswater City during the campaign. The Crucible after the campaign. |
 | Cost | First entry free. Subsequent entries cost `SAFARI_ENTRY_COST` (10,000G). |
 | Encounters | Continuous random encounters up to `SAFARI_MAX_ENCOUNTERS` (10 per session). Each encounter is a single mon. |
-| Pool grade | `SAFARI_GRADE_WEIGHTS` g1:3 / g2:22 / g3:50 / g4:25 — tightened to make Safari a "spend money for a real chance" trip rather than a guaranteed haul. |
+| Pool grade | `_SAFARI_GRADE_CURVE_BY_BADGES` starts at G1/G2/G3/G4 weights of 0/5/60/35. Grade 1 begins at badge 7. See the [live Safari activity map](docs/game-reference/ACTIVITIES.md#safari-zone) for the full curve. |
 | Balls | Safari-session pool only (`SAFARI_BALLS_PER_SESSION` = 10). The player's PokéBall stack does **not** apply inside; leftover Safari Balls are forfeited on exit. Safari Ball multiplier `SAFARI_BALL_MULT` = 1.35× (between Poké and Great). |
 | Bait/Rock | Bait `SAFARI_BAIT_CATCH_MULT` 0.70× catch / `SAFARI_BAIT_FLEE_MULT` 0.55× post-miss flee. Rock `SAFARI_ROCK_CATCH_MULT` 1.65× catch / `SAFARI_ROCK_FLEE_MULT` 1.70× post-miss flee. Stack up to 3× each; reset between encounters. |
-| Flee — on missed throw | Per-grade flee rate (G1 55% → G4 20%), modulated by bait/rock stacks. |
+| Flee — on missed throw | G1/G2/G3/G4 start at 40%/28%/20%/12%. Bait and Rock modify these values. The [ball rules data](data/story/ball-math.json) also defines the catch rates and Ball multipliers. |
 | Flee — per turn (Bait/Rock) | Each Bait/Rock action also rolls a flee check at the end of the turn — canonical Safari tension. Per-turn flee = per-grade flee × rock stacks (`SAFARI_ROCK_FLEE_MULT`) × an action multiplier; the **bait stack is intentionally excluded** so feeding never lowers the per-turn flee shown on the Rock or Bait buttons (food calms only the post-miss flee + catch odds — the wild's persistent state). Bait turn flee = `SAFARI_BAIT_TURN_FLEE_MULT` 0.45× (moderate, ~5–18% per turn, mid-tier ≈9% — no longer a free stall). Rock turn flee = `SAFARI_ROCK_TURN_FLEE_MULT` 0.55× (scales fast with rock stacks). Hard-capped at `SAFARI_TURN_FLEE_CAP` = 45%. |
 | Exit | After 10 encounters, when balls run out, or via "Leave Safari" button. Caught mons enter party/PC; uncaught are gone. End-of-session messages are PA-style ("Ding-dong! Your Safari Zone game is over!"). |
 

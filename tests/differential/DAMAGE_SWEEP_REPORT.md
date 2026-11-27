@@ -1,6 +1,6 @@
 # Damage-Modifier Sweep Report
 
-> Generated 2026-09-12 by `tests/differential/damage-sweep.mjs` (12 seeds/engine).
+> Generated 2026-11-26 by `tests/differential/damage-sweep.mjs` (12 seeds/engine).
 > Each row runs one attacker+move into a passive wall in BOTH engines across many
 > seeds, then compares the damage **ranges**. Overlapping ranges = the multiplier
 > layer agrees; disjoint ranges = a real items/abilities/stat-calc divergence
@@ -17,15 +17,15 @@ documented engine findings, not surprises.
 | `item-choice-band` | Choice Band ×1.5 (physical) | 8–9 (μ9) | 9–14 (μ10) | ✅ overlap |
 | `item-choice-specs` | Choice Specs ×1.5 (special) | 58–69 (μ64) | 58–97 (μ66) | ✅ overlap |
 | `item-life-orb` | Life Orb ×1.3 | 51–60 (μ56) | 51–83 (μ58) | ✅ overlap |
-| `item-charcoal-type` | Charcoal ×1.2 (Fire) | 40–65 (μ45) | 39–64 (μ44) | ✅ overlap |
+| `item-charcoal-type` | Charcoal ×1.2 (Fire) | 39–65 (μ45) | 39–64 (μ44) | ✅ overlap |
 | `ability-huge-power` | Huge Power ×2 Attack | 6–7 (μ7) | 6–11 (μ7) | ✅ overlap |
 | `ability-adaptability` | Adaptability STAB ×2 (vs ×1.5) | 64–104 (μ77) | 62–104 (μ73) | ✅ overlap |
 | `ability-technician` | Technician ×1.5 (≤60 BP) | 27–33 (μ30) | 27–46 (μ31) | ✅ overlap |
 | `def-thick-fat` | Thick Fat halves incoming Fire (defender) | 26–44 (μ31) | 27–43 (μ30) | ✅ overlap |
 | `def-multiscale` | Multiscale halves at full HP (defender) | 18–21 (μ20) | 18–31 (μ21) | ✅ overlap |
-| `weather-rain-water` | Rain ×1.5 on Water (Rain Dance → Surf) | 67–75 (μ72) | 69–114 (μ78) | ✅ overlap |
-| `weather-sun-fire` | Sun ×1.5 on Fire (Sunny Day → Flamethrower) | 67–95 (μ77) | 69–114 (μ78) | ✅ overlap |
-| `weather-sun-water-weak` | Sun ×0.5 on Water (Sunny Day → Surf) | 24–28 (μ26) | 22–37 (μ25) | ✅ overlap |
+| `weather-rain-water` | Rain ×1.5 on Water (Rain Dance → Surf) | 67–76 (μ73) | 69–114 (μ78) | ✅ overlap |
+| `weather-sun-fire` | Sun ×1.5 on Fire (Sunny Day → Flamethrower) | 69–97 (μ79) | 69–114 (μ78) | ✅ overlap |
+| `weather-sun-water-weak` | Sun ×0.5 on Water (Sunny Day → Surf) | 22–27 (μ24) | 22–37 (μ25) | ✅ overlap |
 | `screen-reflect-phys` | Reflect halves physical | 23–82 (μ30) | 23–27 (μ25) | ✅ overlap |
 | `screen-lightscreen-spec` | Light Screen halves special | 26–89 (μ33) | 26–87 (μ33) | ✅ overlap |
 | `item-expert-belt-se` | Expert Belt ×1.2 on super-effective | 101–121 (μ111) | 101–166 (μ114) | ✅ overlap |
@@ -46,7 +46,7 @@ documented engine findings, not surprises.
 | `def-heatproof` | Heatproof halves Fire (defender) | 26–36 (μ30) | 27–43 (μ30) | ✅ overlap |
 | `def-fluffy-contact` | Fluffy halves contact (defender) | 31–36 (μ34) | 32–51 (μ36) | ✅ overlap |
 | `def-dry-skin-fire` | Dry Skin ×1.25 Fire taken (defender) | 64–86 (μ73) | 64–108 (μ73) | ✅ overlap |
-| `item-muscle-band` | Muscle Band ×1.1 (physical) | 69–80 (μ74) | 70–114 (μ79) | ✅ overlap |
+| `item-muscle-band` | Muscle Band ×1.1 (physical) | 69–79 (μ74) | 70–114 (μ79) | ✅ overlap |
 | `item-wise-glasses` | Wise Glasses ×1.1 (special) | 57–67 (μ63) | 57–94 (μ64) | ✅ overlap |
 | `item-occa-berry-se` | Occa Berry halves a super-effective Fire hit (defender) | 51–65 (μ57) | 51–85 (μ58) | ✅ overlap |
 | `recoil-brave-bird` | Brave Bird recoil = 33% of damage dealt (attacker) | 119–119 (μ119) | 119–119 (μ119) | ✅ overlap |
@@ -58,12 +58,12 @@ documented engine findings, not surprises.
 | `def-marvel-scale` | Marvel Scale ×1.5 Def when statused (paralysed first) | 39–64 (μ46) | 39–66 (μ46) | ✅ overlap |
 | `knockoff-item-boost` | Knock Off ×1.5 when the target holds a removable item | 169–198 (μ186) | 169–282 (μ191) | ✅ overlap |
 | `sand-spd-rock` | Sandstorm grants Rock-types ×1.5 SpD | 43–51 (μ47) | 43–72 (μ49) | ✅ overlap |
-| `multihit-skill-link` | Skill Link → 5-hit multi-hit move (always max hits) | 89–112 (μ99) | 96–117 (μ103) | ✅ overlap |
+| `multihit-skill-link` | Skill Link → 5-hit multi-hit move (always max hits) | 93–114 (μ102) | 96–117 (μ103) | ✅ overlap |
 | `facade-status` | Facade burned keeps ×2 (burn drop exempted) — finding #4 FIXED | 109–195 (μ127) | 109–165 (μ122) | ✅ overlap |
 | `hex-status` | Hex ×2 vs a statused target (paralysed first) | 42–88 (μ78) | 42–90 (μ79) | ✅ overlap |
 | `acrobatics-no-item` | Acrobatics ×2 when the user holds no item | 93–109 (μ102) | 93–154 (μ105) | ✅ overlap |
-| `gyro-ball-slow` | Gyro Ball BP scales with the speed ratio (slow user) | 40–45 (μ43) | 42–69 (μ47) | ✅ overlap |
-| `weather-ball-rain` | Weather Ball → Water + 100 BP in rain (Rain Dance → Weather Ball) | 67–75 (μ72) | 69–114 (μ78) | ✅ overlap |
+| `gyro-ball-slow` | Gyro Ball BP scales with the speed ratio (slow user) | 42–46 (μ45) | 42–69 (μ47) | ✅ overlap |
+| `weather-ball-rain` | Weather Ball → Water + 100 BP in rain (Rain Dance → Weather Ball) | 67–76 (μ73) | 69–114 (μ78) | ✅ overlap |
 | `stored-power-boosts` | Stored Power BP = 20 + 20×boosts (Calm Mind first) | 51–58 (μ55) | 52–85 (μ59) | ✅ overlap |
 | `ability-analytic` | Analytic ×1.3 when the user moves last | 58–69 (μ64) | 58–97 (μ66) | ✅ overlap |
 | `ability-stakeout-lead` | Stakeout does NOT ×2 a turn-1 lead — finding #2 FIXED | 47–55 (μ51) | 47–77 (μ53) | ✅ overlap |

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine } from '../helpers/load-engine.js';
 
 // Verifies the Math.random patch installed alongside storyRngNext routes
 // every random call through the seeded LCG when sm.active && sm.runSeed != null.
@@ -108,6 +108,7 @@ test('sm.active toggling restores native behavior cleanly', async () => {
 
 test('starting a new adventure rolls the story tracks from its own seed', async () => {
   const { window, seedRng, nextFloat } = await loadEngine();
+  installWritableStorage(window);
   const story = window.StoryMode;
   const storyTest = window.__storyTest;
   const previousRun = { ...storyTest.sm, active: true, runSeed: 314159, _strngState: 913 };

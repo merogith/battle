@@ -1,0 +1,442 @@
+{
+  "scopes": {
+    "city": "Town and Crucible visits, NPCs, shops, tutors, field tools and local activities.",
+    "story": "A new journey, world choices, encounters, League, postgame and replay.",
+    "field-tools": "Inventory, roster, Pokémon details, collection, maps and notes.",
+    "activities": "Hidden and repeatable activities, Camp and postgame challenges.",
+    "battles": "All battle modes, selection, rules, scene presentation and results.",
+    "app": "Title, menus, accessibility, game data, settings and delivery.",
+    "progression": "Recruitment, rewards, unlocks, builds, training and enemy scaling.",
+    "mobile": "All player-facing screen families in touch layouts.",
+    "design": "World presentation and the rules, economy and test design references."
+  },
+  "features": [
+    {
+      "id": "app-title",
+      "title": "Public title and in-game home",
+      "guide": "APP.md",
+      "scopes": ["app", "mobile"],
+      "views": ["index.html#title", "battle.html#screen-menu"],
+      "catalogs": {"title-links": "*", "entry-handlers": "*", "app-title-ids": "*"},
+      "checks": ["tests/visual/deferred-startup.mjs", "tests/visual/navigation-unification.mjs"],
+      "register": ["onboarding", "layout"]
+    },
+    {
+      "id": "app-help",
+      "title": "Settings, Help, reading and practice",
+      "guide": "APP.md",
+      "scopes": ["app", "mobile", "city", "story"],
+      "views": ["battle.html#modal-settings", "battle.html#modal-help"],
+      "catalogs": {"audio-scenes": "*", "practice-lessons": "*"},
+      "checks": ["tests/visual/app-shell-controls.mjs", "tests/visual/keyboard-navigation.mjs", "tests/visual/save-recovery-integrity.mjs"],
+      "register": ["settings", "help-practice", "accessibility", "gameplay-access"],
+      "cases": ["detail-closure.app-fullscreen-capability"]
+    },
+    {
+      "id": "app-save",
+      "title": "Run information, backups and recovery",
+      "guide": "APP.md",
+      "scopes": ["app", "mobile", "story", "progression"],
+      "views": ["battle.html#modal-story-run-summary", "battle.html#modal-story-abandon-confirm"],
+      "catalogs": {},
+      "checks": ["tests/visual/save-recovery-integrity.mjs", "tests/visual/story-exact-resume.mjs"],
+      "register": ["save"]
+    },
+    {
+      "id": "app-delivery",
+      "title": "Boot, installation, offline packs and updates",
+      "guide": "APP.md",
+      "scopes": ["app", "mobile"],
+      "views": [],
+      "catalogs": {"release-packs": "*"},
+      "checks": ["tests/visual/deferred-startup.mjs", "scripts/debug/installed-upgrade-playtest.mjs"],
+      "register": ["offline", "performance", "hardware"]
+    },
+    {
+      "id": "app-rooms",
+      "title": "Room forms, invite, scores and setup",
+      "guide": "APP.md",
+      "scopes": ["app", "mobile", "battles"],
+      "views": ["battle.html#modal-online-host", "battle.html#modal-online-pvp", "battle.html#modal-gauntlet-leaderboard", "battle.html#online-waiting-overlay"],
+      "catalogs": {},
+      "checks": ["tests/visual/app-shell-controls.mjs", "tests/visual/online-native-room.mjs", "scripts/debug/player-modes-playtest.mjs"],
+      "register": ["online", "online-social", "hosted"],
+      "cases": ["detail-closure.app-scores-focus"]
+    },
+    {
+      "id": "shared-dialogs",
+      "title": "Alerts, confirmations, notices and Back",
+      "guide": "APP.md",
+      "scopes": ["app", "mobile", "city", "field-tools", "story", "battles"],
+      "views": ["battle.html#modal-game-alert", "battle.html#modal-game-confirm"],
+      "catalogs": {},
+      "checks": ["tests/visual/keyboard-navigation.mjs", "tests/visual/navigation-unification.mjs"],
+      "register": []
+    },
+    {
+      "id": "story-opening",
+      "title": "New adventure, trainer profile, Pallet and Professor",
+      "guide": "WORLD.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": ["battle.html#screen-story-menu", "battle.html#screen-story-trainercreate", "battle.html#screen-story-professor"],
+      "catalogs": {"city-live-actions": ["professor"]},
+      "checks": ["tests/visual/story-onboarding.mjs", "tests/visual/story-starter-parity.mjs"],
+      "register": ["onboarding"]
+    },
+    {
+      "id": "story-towns",
+      "title": "Towns, residents, errands, gates and Gym handoffs",
+      "guide": "WORLD.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": ["battle.html#screen-story-city"],
+      "catalogs": {"town-arrival-guides": "*", "town-landmarks": "*", "town-scenes": "*", "errands": "*", "timeline-rows": "*", "city-action-labels": "*", "city-live-actions": ["gym", "league", "route", "tr", "vr"]},
+      "checks": ["tests/visual/story-north-road-world.mjs", "tests/visual/story-city-notifications.mjs", "tests/visual/story-gym-intermission.mjs"],
+      "register": ["timeline", "errands", "gym-intermissions", "gym-badges"],
+      "cases": ["facilities.city-layout"]
+    },
+    {
+      "id": "story-roads",
+      "title": "Roads, discoveries, habitats and route choices",
+      "guide": "WORLD.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": [],
+      "catalogs": {"roads": "*", "road-outcomes": "*", "road-scenes": "*"},
+      "checks": ["tests/visual/story-north-road-world.mjs", "scripts/debug/story-playthrough.mjs"],
+      "register": ["roads"]
+    },
+    {
+      "id": "story-narrative",
+      "title": "Main story, faction and anomaly tracks, voices and choices",
+      "guide": "WORLD.md",
+      "scopes": ["city", "story", "mobile"],
+      "views": [],
+      "catalogs": {"runtime-scenes": "*", "main-scenes": "*", "faction-scenes": "*", "anomaly-scenes": "*", "narrative-minigames": "*", "narrative-interactions": "*", "framing": "*", "voice-routing": "*", "named-dialogue": "*", "faction-tracks": "*", "anomaly-tracks": "*"},
+      "checks": ["tests/visual/story-dialogue.mjs", "tests/visual/story-cinematic-hierarchy.mjs"],
+      "register": ["main-scenes", "faction-scenes", "anomaly-scenes", "narrative-interactions"]
+    },
+    {
+      "id": "story-chapters",
+      "title": "Chapters, follow-up evidence, receipts and replay",
+      "guide": "WORLD.md",
+      "scopes": ["city", "story", "mobile"],
+      "views": [],
+      "catalogs": {"chapters": "*", "chapter-outcomes": "*"},
+      "checks": ["tests/visual/chapter-availability.mjs", "scripts/debug/player-chapters-playtest.mjs"],
+      "register": ["chapters"]
+    },
+    {
+      "id": "story-finale",
+      "title": "League, Hall of Fame, Mystery and endings",
+      "guide": "WORLD.md",
+      "scopes": ["city", "story", "mobile", "battles"],
+      "views": [],
+      "catalogs": {"bosses": "*", "city-live-actions": ["mystery"]},
+      "checks": ["tests/visual/story-boss-phases.mjs", "scripts/debug/player-postgame-playtest.mjs", "tests/visual/story-exact-resume.mjs"],
+      "register": ["bosses"],
+      "cases": ["detail-closure.mystery-first-checkpoint", "detail-closure.mystery-first-turn"]
+    },
+    {
+      "id": "shops",
+      "title": "Pokémart, Department Store and Stones and Beyond",
+      "guide": "FACILITIES.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": ["battle.html#screen-story-shop", "battle.html#screen-story-stone-shop"],
+      "catalogs": {"shop-stock": "*", "facility-debuts": ["mart", "dept", "stoneShop"], "city-live-actions": ["dept", "mart", "stoneShop"]},
+      "checks": ["scripts/debug/player-facilities-playtest.mjs"],
+      "register": [],
+      "cases": ["facilities.mart", "facilities.department", "facilities.stone-shop"]
+    },
+    {
+      "id": "relics",
+      "title": "Relic Hall, first claim, purchases and loadout",
+      "guide": "FACILITIES.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": ["battle.html#screen-story-artifact-shop", "battle.html#screen-story-artifacts"],
+      "catalogs": {"facility-debuts": ["relic"], "city-live-actions": ["relic"]},
+      "checks": ["scripts/debug/player-facilities-playtest.mjs"],
+      "register": [],
+      "cases": ["facilities.relic-shop", "facilities.relic-loadout"]
+    },
+    {
+      "id": "move-tutor",
+      "title": "Move Tutor, move progression and Hidden Power Diviner",
+      "guide": "FACILITIES.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": ["battle.html#screen-story-tutor"],
+      "catalogs": {"facility-debuts": ["tutor"], "city-live-actions": ["tutor"]},
+      "checks": ["scripts/debug/player-facilities-playtest.mjs", "tests/suites/hidden-power-tutor-card.test.js"],
+      "register": [],
+      "cases": ["facilities.tutor-filter", "facilities.tutor-replace"]
+    },
+    {
+      "id": "nature-rater",
+      "title": "Nature Rater and Mint",
+      "guide": "FACILITIES.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": [],
+      "catalogs": {"facility-debuts": ["nature"], "city-live-actions": ["nature"]},
+      "checks": ["scripts/debug/player-facilities-playtest.mjs", "tests/suites/story-tutor-nature-ev-rec.test.js"],
+      "register": [],
+      "cases": ["facilities.nature"]
+    },
+    {
+      "id": "battle-dojo",
+      "title": "Battle Dojo, held items, abilities and belts",
+      "guide": "FACILITIES.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": [],
+      "catalogs": {"facility-debuts": ["dojo"], "city-live-actions": ["dojo"]},
+      "checks": ["scripts/debug/player-facilities-playtest.mjs", "tests/suites/story-ceiling-parity.test.js"],
+      "register": [],
+      "cases": ["facilities.abilities", "facilities.dojo-training"]
+    },
+    {
+      "id": "battle-mentor",
+      "title": "Battle Mentor, Auto-Build and defeat preparation",
+      "guide": "FACILITIES.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": ["battle.html#screen-story-mentor"],
+      "catalogs": {"facility-debuts": ["mentor"], "city-live-actions": ["mentor"]},
+      "checks": ["scripts/debug/player-facilities-playtest.mjs", "tests/suites/story-mentor-stages.test.js"],
+      "register": [],
+      "cases": ["facilities.mentor", "facilities.autobuild", "facilities.mentor-rematch"]
+    },
+    {
+      "id": "ev-trainer",
+      "title": "EV Trainer, redistribution and paid training",
+      "guide": "FACILITIES.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": ["battle.html#screen-story-evtrainer"],
+      "catalogs": {"facility-debuts": ["evtrainer"], "city-live-actions": ["evtrainer"]},
+      "checks": ["scripts/debug/player-facilities-playtest.mjs", "tests/suites/story-ev-redistribute.test.js"],
+      "register": [],
+      "cases": ["facilities.ev-trainer"]
+    },
+    {
+      "id": "iv-trainer",
+      "title": "Pokémon Fan Club, IV vitamins and reductions",
+      "guide": "FACILITIES.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": ["battle.html#screen-story-fanclub"],
+      "catalogs": {"facility-debuts": ["fanclub"], "city-live-actions": ["fanclub"]},
+      "checks": ["scripts/debug/player-facilities-playtest.mjs", "tests/integration/story-service-transactions.test.js"],
+      "register": [],
+      "cases": ["facilities.fan-club", "facilities.iv-training"]
+    },
+    {
+      "id": "battle-forms",
+      "title": "Colress, battle forms, Tera Type and Experience Share",
+      "guide": "FACILITIES.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": ["battle.html#screen-story-colress"],
+      "catalogs": {"facility-debuts": ["colress"], "city-live-actions": ["colress"]},
+      "checks": ["scripts/debug/player-facilities-playtest.mjs"],
+      "register": [],
+      "cases": ["facilities.exp-share", "facilities.gimmick-lab"]
+    },
+    {
+      "id": "evolution",
+      "title": "Evolution Tutor, branches, forms and stones",
+      "guide": "FACILITIES.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": ["battle.html#screen-story-evolab"],
+      "catalogs": {"facility-debuts": ["evolab"], "city-live-actions": ["evolab"]},
+      "checks": ["scripts/debug/player-facilities-playtest.mjs", "tests/suites/story-partner-investment.test.js"],
+      "register": [],
+      "cases": ["facilities.evolution-tutor"]
+    },
+    {
+      "id": "cable-link",
+      "title": "Cable Link reroll, rebuild and upgrade",
+      "guide": "FACILITIES.md",
+      "scopes": ["city", "story", "mobile", "progression"],
+      "views": ["battle.html#screen-story-link"],
+      "catalogs": {"facility-debuts": ["link"], "city-live-actions": ["link"]},
+      "checks": ["scripts/debug/player-facilities-playtest.mjs", "tests/suites/story-ceiling-parity.test.js", "tests/integration/story-service-transactions.test.js"],
+      "register": [],
+      "cases": ["detail-closure.cable-protected-trade", "facilities.link-station"]
+    },
+    {
+      "id": "center-storage",
+      "title": "Pokémon Center, PC and storage",
+      "guide": "FIELD_TOOLS.md",
+      "scopes": ["city", "story", "mobile", "field-tools", "progression"],
+      "views": ["battle.html#screen-story-pokemoncenter"],
+      "catalogs": {"facility-debuts": ["center"], "city-live-actions": ["center"]},
+      "checks": ["scripts/debug/player-facilities-playtest.mjs", "scripts/debug/player-stateful-playtest.mjs", "tests/visual/field-tools-integrity.mjs"],
+      "register": [],
+      "cases": ["detail-closure.field-pc-filter-and-images", "facilities.pc"]
+    },
+    {
+      "id": "field-bag",
+      "title": "Field and battle Bag, pockets, items and vouchers",
+      "guide": "FIELD_TOOLS.md",
+      "scopes": ["city", "story", "mobile", "field-tools", "battles"],
+      "views": ["battle.html#modal-story-bag"],
+      "catalogs": {"bag-pockets": "*", "facility-debuts": ["bag"], "city-live-actions": ["bag"]},
+      "checks": ["tests/visual/story-city-errands-and-bag.mjs", "scripts/debug/player-stateful-playtest.mjs"],
+      "register": [],
+      "cases": ["facilities.bag"]
+    },
+    {
+      "id": "party-summary",
+      "title": "Party, Pokémon cards and Summary stat pages",
+      "guide": "FIELD_TOOLS.md",
+      "scopes": ["city", "story", "mobile", "field-tools", "battles"],
+      "views": ["battle.html#modal-story-party", "battle.html#modal-summary"],
+      "relatedViews": ["battle.html#modal-party"],
+      "catalogs": {"summary-tabs": "*", "facility-debuts": ["party"], "city-live-actions": ["party"]},
+      "checks": ["tests/visual/field-tools-integrity.mjs", "tests/visual/interface-polish.mjs", "tests/visual/keyboard-navigation.mjs"],
+      "register": [],
+      "cases": ["detail-closure.field-summary-seeded-read", "detail-closure.field-summary-save-and-return", "detail-closure.battle-forced-party", "facilities.party", "facilities.party-card"]
+    },
+    {
+      "id": "collection",
+      "title": "Pokédex, Collection, achievements and records",
+      "guide": "FIELD_TOOLS.md",
+      "scopes": ["city", "story", "mobile", "field-tools"],
+      "views": ["battle.html#screen-collection"],
+      "catalogs": {"collection-tabs": "*", "achievements": "*"},
+      "checks": ["tests/visual/story-collection-layout.mjs", "scripts/debug/player-postgame-playtest.mjs"],
+      "register": ["achievements"]
+    },
+    {
+      "id": "notebook-atlas",
+      "title": "Trainer’s Notebook, Journal, Atlas, Archive and notices",
+      "guide": "FIELD_TOOLS.md",
+      "scopes": ["city", "story", "mobile", "field-tools"],
+      "views": [],
+      "catalogs": {"notebook-pages": "*", "notebook-directory": "*", "city-live-actions": ["journal"]},
+      "checks": ["tests/visual/story-town-tools.mjs", "tests/visual/story-city-notifications.mjs"],
+      "register": []
+    },
+    {
+      "id": "activity-camp",
+      "title": "Camp, bonding paths, minigames and camp grass",
+      "guide": "ACTIVITIES.md",
+      "scopes": ["story", "mobile", "activities", "progression"],
+      "views": [],
+      "catalogs": {"camp": "*", "camp-inputs": "*"},
+      "checks": ["scripts/debug/player-camp-playtest.mjs"],
+      "register": ["camp"]
+    },
+    {
+      "id": "activity-daycare",
+      "title": "Daycare Inn, Poké Pits, eggs and hidden entrance",
+      "guide": "ACTIVITIES.md",
+      "scopes": ["city", "story", "mobile", "activities", "progression"],
+      "views": [],
+      "catalogs": {"facility-debuts": ["daycare"], "city-live-actions": ["daycare"]},
+      "checks": ["tests/visual/story-side-activities.mjs", "tests/suites/story-daycare-pits.test.js"],
+      "register": [],
+      "cases": ["facilities.daycare", "facilities.inn"]
+    },
+    {
+      "id": "activity-casino",
+      "title": "Poké Game Corner and its games",
+      "guide": "ACTIVITIES.md",
+      "scopes": ["city", "story", "mobile", "activities"],
+      "views": ["battle.html#screen-story-casino"],
+      "catalogs": {"facility-debuts": ["casino"], "city-live-actions": ["casino"]},
+      "checks": ["scripts/debug/player-casino-playtest.mjs"],
+      "register": ["casino"]
+    },
+    {
+      "id": "activity-capture",
+      "title": "Wild encounters, Safari, legendary hunts and capture placement",
+      "guide": "ACTIVITIES.md",
+      "scopes": ["city", "story", "mobile", "activities", "progression", "battles"],
+      "views": ["battle.html#screen-story-catch"],
+      "catalogs": {"ball-rules": "*", "facility-debuts": ["safari"], "city-live-actions": ["safari"]},
+      "checks": ["tests/visual/story-legendary-capture.mjs", "scripts/debug/player-postgame-playtest.mjs"],
+      "register": ["capture"],
+      "cases": ["detail-closure.safari-exit-receipt"]
+    },
+    {
+      "id": "activity-fightclub",
+      "title": "Underground, Fight Club, sacrifice and Memorial",
+      "guide": "ACTIVITIES.md",
+      "scopes": ["city", "story", "mobile", "activities", "progression", "battles"],
+      "views": [],
+      "catalogs": {"city-live-actions": ["pits"]},
+      "checks": ["tests/visual/story-side-activities.mjs", "tests/suites/story-fight-club-memorial.test.js"],
+      "register": [],
+      "cases": ["detail-closure.fight-club-start-denied"]
+    },
+    {
+      "id": "activity-crucible",
+      "title": "The Crucible, rematches, ladder and seed challenges",
+      "guide": "ACTIVITIES.md",
+      "scopes": ["city", "story", "mobile", "activities", "progression", "battles"],
+      "views": ["battle.html#screen-story-crucible", "battle.html#screen-story-frontier"],
+      "catalogs": {"frontier-challenges": "*", "crucible-actions": "*", "city-live-actions": ["crucible"]},
+      "checks": ["tests/visual/crucible-field-tools.mjs", "tests/visual/story-frontier-challenges.mjs", "scripts/debug/player-postgame-playtest.mjs"],
+      "register": ["repeat-challenges"],
+      "cases": ["detail-closure.crucible-field-tools"]
+    },
+    {
+      "id": "battle-board",
+      "title": "Classic board, HUD, switches, effects and results",
+      "guide": "BATTLES.md",
+      "scopes": ["battles", "story", "city", "mobile"],
+      "views": ["battle.html#screen-battle", "battle.html#modal-party", "battle.html#modal-end-screen", "battle.html#screen-story-gameover"],
+      "catalogs": {},
+      "checks": ["tests/visual/battle-long-session.mjs", "tests/visual/field-tools-integrity.mjs", "tests/visual/battle-responsive.mjs", "tests/visual/combat-detail-regression.mjs", "tests/visual/story-exact-resume.mjs"],
+      "register": ["mode", "engine", "presentation"]
+    },
+    {
+      "id": "battle-draft",
+      "title": "Draft, opponent inspection and Gauntlet transitions",
+      "guide": "BATTLES.md",
+      "scopes": ["battles", "app", "mobile"],
+      "views": ["battle.html#screen-draft", "battle.html#modal-enemy-pool", "battle.html#modal-gauntlet-swap"],
+      "relatedViews": ["battle.html#screen-menu"],
+      "catalogs": {},
+      "checks": ["tests/visual/deferred-startup.mjs", "tests/suites/species-clause.test.js", "scripts/debug/player-modes-playtest.mjs", "tests/visual/online-native-room.mjs"],
+      "register": ["mode", "online"],
+      "controlGroups": ["battle.html#menu-customize-panel"],
+      "cases": ["detail-closure.setup-cold-options", "detail-closure.draft-pool-legality"]
+    },
+    {
+      "id": "battle-arena",
+      "title": "Competitive Arena, formats, teams and replay",
+      "guide": "BATTLES.md",
+      "scopes": ["battles", "mobile"],
+      "views": ["competitive/index.html#setup", "competitive/index.html#match", "competitive/index.html#move-guide"],
+      "catalogs": {"arena-formats": "*", "arena-controls": "*"},
+      "checks": ["tests/visual/competitive-playwright.mjs", "tests/visual/competitive-motion.mjs"],
+      "register": ["arena", "arena-format", "strategy-stress"]
+    },
+    {
+      "id": "battle-rules",
+      "title": "Mode rules, levels, tiers, builds, economy and Team Tester",
+      "guide": "BATTLES.md",
+      "scopes": ["battles", "progression", "story", "design"],
+      "views": ["battle.html#screen-story-tester"],
+      "catalogs": {"trainer-roster": "*", "rules-archetypes": "*", "rules-utility": "*"},
+      "checks": ["tests/integration/classic-data-coverage.test.js", "tests/integration/competitive-simulation.test.js", "scripts/debug/data-validator.mjs"],
+      "register": ["engine", "progression"],
+      "relatedViews": ["battle.html#screen-story-trainercreate"]
+    },
+    {
+      "id": "world-presentation",
+      "title": "Venue art, music, ambient cues and fallbacks",
+      "guide": "WORLD.md",
+      "scopes": ["city", "story", "mobile", "activities", "design"],
+      "views": [],
+      "catalogs": {"facility-scenes": "*"},
+      "checks": ["tests/visual/story-north-road-world.mjs", "tests/visual/story-audio.mjs"],
+      "register": ["presentation", "voice-routing"]
+    },
+    {
+      "id": "design-library",
+      "title": "Design documents, specifications and historical audits",
+      "guide": "DESIGN.md",
+      "scopes": ["design"],
+      "views": [],
+      "catalogs": {"design-documents": "*"},
+      "checks": ["scripts/debug/interface-coverage-audit.py"],
+      "register": []
+    }
+  ]
+}

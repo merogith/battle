@@ -107,7 +107,7 @@ test('control: a non-Mystery retreat on hard difficulty still charges', () => {
 
 test('row-67 cold-open carries the trial framing and a line per first-encounter result', () => {
     const scene = ST.MYSTERY67_BY_VARIANT.classic;
-    assert.ok(scene.lines.some(l => /sorting|test|weak/i.test(l)), 'trial/sorting framing present');
+    assert.ok(scene.lines.some(l => /showed me I’m wrong/.test(l)), 'the figure challenges the player’s leading choice');
     const byResult = scene.lineByFirstEncounter || {};
     for (const key of ['won', 'lost', 'declined']) {
         assert.ok(typeof byResult[key] === 'string' && byResult[key].length > 10, `callback line for '${key}'`);

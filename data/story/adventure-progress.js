@@ -205,11 +205,11 @@
         return { archive, changed: true, newMilestones };
     }
 
-    function reconcileChoices(source, runId, storyChoices) {
+    function reconcileChoices(source, runId, seed, storyChoices) {
         const current = isRecord(storyChoices) ? storyChoices : {};
-        if (!isRunId(runId) || source?.version !== VERSION || !isRecord(source.runs)) return current;
+        if (!isRunId(runId) || !Number.isInteger(seed) || source?.version !== VERSION || !isRecord(source.runs)) return current;
         const entry = Object.hasOwn(source.runs, runId) ? source.runs[runId] : null;
-        if (!isRecord(entry) || !Number.isInteger(entry.seed)) return current;
+        if (!isRecord(entry) || !Number.isInteger(entry.seed) || (entry.seed >>> 0) !== (seed >>> 0)) return current;
         const choices = collectChapterValues(entry.choices, '', isChoice);
         const secrets = collectChapterValues(entry.secrets, '', isEarned);
         let result = current;
@@ -224,7 +224,7 @@
         return result;
     }
 
-    const api = Object.freeze({ createRunId, normalize, record, reconcileChoices, summarize, mergeArchives });
+    const api = Object.freeze({ createRunId, isRunId, normalize, record, reconcileChoices, summarize, mergeArchives });
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else global.AdventureProgress = api;
 })(globalThis);

@@ -15,18 +15,19 @@
  * code fresh even when ASSETS still holds an older battle.html. Cross-origin (Supabase/CDN) is
  * network-only. The manifest build sets CACHE_VERSION from the release contents.
  */
-const CACHE_VERSION = 'battle-v5-b9f179b9dfc5';
+const CACHE_VERSION = 'battle-v5-a2b858d66847';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const ASSETS_CACHE = 'battle-assets';            // STABLE — not version-keyed
 const APPLIED_MANIFEST_KEY = '__OFFLINE_MANIFEST__';
 const OFFLINE_PROGRESS_KEY = '__OFFLINE_PROGRESS__';
+const ASSET_HASH_QUERY = '?__pbs_offline_hash=';
 const VERSIONED_CACHE = /^battle-v\d+(?:-[0-9a-f]+)?-(?:shell|runtime)$/;
 const ASSET_BATCH_SIZE = 12;
 const ASSET_BATCH_BYTES = 16 * 1024 * 1024;
 const ASSET_TRANSFER_IDLE_MS = 30000;
 const ASSET_WORK_SLICE_MS = 45000;
-const LAZY_CODE = new Set(['competitive/showdown-worker.js', 'vendor/pkmn-dex-learnsets.min.js']);
+const LAZY_CODE = new Set(['vendor/pkmn-dex-learnsets.min.js', 'vendor/tsparticles.slim.min.js']);
 
 // Files the app cannot boot without — precached so a cold offline launch works.
 const SHELL = [
@@ -57,6 +58,7 @@ const SHELL = [
   'competitive/arena.css',
   'competitive/arena.js',
   'competitive/arena-client.js',
+  'competitive/showdown-worker.js',
   'competitive/classic-simulation.js',
   'competitive/showdown-engine.js',
 ];
@@ -103,6 +105,7 @@ async function precacheShell(repair = false) {
     }
     await cache.put('./',await cache.match('index.html'));
     await cache.put('offline-assets.json',new Response(JSON.stringify(manifest),{headers:{'Content-Type':'application/json'}}));
+    releaseAssetIndex = null;
   } catch (error) {
     // A rejected installation should leave the last release available and no partial shell
     // taking up space. A repair keeps the individual files it was able to restore.
@@ -212,29 +215,64 @@ async function cacheFirst(req, bundleKey = req) {
 
 const PACK_FRAME_ARCHIVE = 'sprites/compact-frames.bin';
 let compactFrames;
-let installedAssetCompatibility;
+let releaseAssetIndex;
+const legacyFileChecks = new Map();
 
-async function readInstalledAssetCompatibility() {
-  const applied = await matchCache(ASSETS_CACHE, APPLIED_MANIFEST_KEY);
-  if (!applied) return null;
-  const record = await applied.json();
-  if (!record?.release || record.release === CACHE_VERSION) return null;
-  const manifest = await matchCache(SHELL_CACHE, 'offline-assets.json');
-  if (!manifest) return null;
-  const previous = assetHashes(record);
-  const current = assetHashes(await manifest.json());
-  return new Set(Object.keys(previous).filter(url => previous[url] === current[url]));
+async function installedFile(path) {
+  releaseAssetIndex ??= (async () => {
+    const response = await matchCache(SHELL_CACHE, 'offline-assets.json');
+    const manifest = await response?.json();
+    if (manifest?.version !== CACHE_VERSION || !Array.isArray(manifest.files)) return null;
+    return new Map(manifest.files.map(file => [file.u, file]));
+  })().catch(() => null);
+  const files = await releaseAssetIndex;
+  if (!files) releaseAssetIndex = null;
+  return files?.get(path);
+}
+
+function offlineFileKey(file) {
+  return `${file.u}${ASSET_HASH_QUERY}${file.h}`;
+}
+
+function checkLegacyOfflineFile(file, response) {
+  const key = offlineFileKey(file);
+  if (!legacyFileChecks.has(key)) {
+    // Settings, the download plan, and an image request can all inspect the
+    // same older file. Share one digest, including while it is still running.
+    const checking = (async () => {
+      try {
+        await verifyResponse(response || await matchCache(ASSETS_CACHE, file.u), file);
+        return true;
+      } catch (_) {
+        legacyFileChecks.delete(key);
+        return false;
+      }
+    })();
+    legacyFileChecks.set(key, checking);
+  }
+  return legacyFileChecks.get(key);
+}
+
+async function matchLegacyOfflineFile(file) {
+  const response = await matchCache(ASSETS_CACHE, file.u);
+  return response && await checkLegacyOfflineFile(file, response) ? response : null;
+}
+
+async function matchOfflineFile(file) {
+  if (!file || isCoreAsset(file) || file.u === 'sw.js') return null;
+  // New writes use a content key after verifying the response. A partial delta
+  // can coexist with the active release and even survive rolling back its shell.
+  const verified = await matchCache(ASSETS_CACHE, offlineFileKey(file));
+  if (verified) return verified;
+  // Older workers stored media at the bare URL and could overwrite it before
+  // updating the receipt. Check the actual response when reusing those bytes.
+  return matchLegacyOfflineFile(file);
 }
 
 async function matchInstalledAsset(request) {
-  const response = await matchCache(ASSETS_CACHE, request);
-  if (!response) return null;
   const path = typeof request === 'string' ? request : relUrl(request.url);
-  // Unchanged downloads stay available while an updated shell waits for its
-  // optional media delta. Changed files use the current origin or the UI fallback.
-  installedAssetCompatibility ??= readInstalledAssetCompatibility().catch(() => null);
-  const compatible = await installedAssetCompatibility;
-  return !compatible || compatible.has(path) ? response : null;
+  if (path.includes('?')) return null;
+  return matchOfflineFile(await installedFile(path));
 }
 
 async function loadCompactFrames() {
@@ -269,12 +307,10 @@ async function versionedLazyCode(path, request, event) {
   const loaded = await matchCache(RUNTIME_CACHE, path);
   if (loaded) return loaded;
   try {
-    const manifestResponse = await matchCache(SHELL_CACHE, 'offline-assets.json');
-    const manifest = await manifestResponse?.json();
-    const file = manifest?.version === CACHE_VERSION && manifest.files.find(asset => asset.u === path);
+    const file = await installedFile(path);
     if (!file) throw new Error('Release asset unavailable');
 
-    const downloaded = await reuseVerifiedResponse(file, [ASSETS_CACHE]);
+    const downloaded = await matchOfflineFile(file);
     if (downloaded) return downloaded;
     const response = await verifyResponse(await fetch(request, { cache: 'reload' }), file);
     event.waitUntil(cacheRuntimeResponse(path, response.clone()));
@@ -416,15 +452,7 @@ async function readAssetRecord(cache, key) {
   try { return await r.json(); } catch (_) { return null; }
 }
 
-function assetHashes(record) {
-  const hashes = Object.create(null);
-  if (Array.isArray(record?.files)) {
-    for (const file of record.files) hashes[file.u] = file.h;
-  }
-  return hashes;
-}
-
-async function presentUrls(cache) {
+async function presentAssetKeys(cache) {
   const keys = await cache.keys();
   const set = new Set();
   for (const req of keys) {
@@ -432,6 +460,24 @@ async function presentUrls(cache) {
     if (u !== APPLIED_MANIFEST_KEY && u !== OFFLINE_PROGRESS_KEY) set.add(u);
   }
   return set;
+}
+
+async function availableAssetFiles(files, keys) {
+  const available = new Map();
+  const legacy = [];
+  for (const file of files) {
+    const key = offlineFileKey(file);
+    if (keys.has(key)) available.set(file.u, key);
+    else if (keys.has(file.u)) legacy.push(file);
+  }
+  // Check legacy bytes in bounded batches so old full packs do not concentrate
+  // multiple large tracks and the atlas in memory at once.
+  for (const batch of offlineAssetBatches(legacy)) {
+    await Promise.all(batch.map(async file => {
+      if (await checkLegacyOfflineFile(file)) available.set(file.u, file.u);
+    }));
+  }
+  return available;
 }
 
 self.addEventListener('message', (event) => {
@@ -457,11 +503,10 @@ self.addEventListener('message', (event) => {
   } else if (msg.type === 'CACHE_STATE') {
     event.waitUntil((async () => {
       const cache = await caches.open(ASSETS_CACHE);
-      const present = await presentUrls(cache);
+      const present = await presentAssetKeys(cache);
       const record = await readAssetRecord(cache, APPLIED_MANIFEST_KEY);
-      const applied = assetHashes(record);
-      const partial = assetHashes(await readAssetRecord(cache, OFFLINE_PROGRESS_KEY));
-      const urls = Object.keys(applied);
+      const files = Array.isArray(record?.files) ? record.files : [];
+      const available = await availableAssetFiles(files, present);
       let shellReady = !record?.release;
       if (!shellReady) {
         try {
@@ -470,10 +515,8 @@ self.addEventListener('message', (event) => {
         } catch (_) {}
       }
       reply({ type: 'CACHE_STATE', batchId: msg.batchId, cachedCount: present.size,
-        appliedCount: urls.length, digest: record?.digest, profile: record?.profile || 'full', complete: urls.length > 0
-          && shellReady
-          && urls.every(url => present.has(url))
-          && Object.keys(partial).every(url => applied[url] === partial[url]) });
+        appliedCount: files.length, digest: record?.digest, profile: record?.profile || 'full',
+        complete: files.length > 0 && shellReady && available.size === files.length });
     })());
   }
 });
@@ -499,7 +542,7 @@ async function clearAssets(msg, reply, sourceId) {
   try {
     await Promise.all([caches.delete(ASSETS_CACHE), caches.delete(RUNTIME_CACHE)]);
     compactFrames = null;
-    installedAssetCompatibility = null;
+    legacyFileChecks.clear();
     offlineJob = null;
     reply({ type: 'CACHE_CLEARED', batchId: msg.batchId });
     await notifyOfflineClients({ type: 'OFFLINE_PACK_REMOVED' }, sourceId);
@@ -577,22 +620,30 @@ async function syncAssets(msg, reply) {
     assetMutationInProgress = true;
     offlineJob = { digest, profile, status: 'preparing', total: 0, done: 0, failed: 0, bytes: 0, remainingBytes: 0 };
   }
+  const checking = setInterval(() => reply({ type: 'SYNC_PROGRESS', batchId: msg.batchId, status: 'checking' }), 2500);
   try {
     const cache = await caches.open(ASSETS_CACHE);
     const appliedRecord = await readAssetRecord(cache, APPLIED_MANIFEST_KEY);
     const partialRecord = await readAssetRecord(cache, OFFLINE_PROGRESS_KEY);
-    const appliedHashes = assetHashes(appliedRecord);
-    const partialHashes = assetHashes(partialRecord);
-    const present = await presentUrls(cache);
+    const present = await presentAssetKeys(cache);
     const packFiles = msg.manifest.files.filter(file => !file.p || file.p === profile);
     const files = packFiles.filter(file => !isCoreAsset(file) && file.u !== 'sw.js');
     if (profile === 'compact' && !files.some(file => file.u === PACK_FRAME_ARCHIVE)) throw new Error('Compact sprite archive is missing');
-    const plan = computeSyncPlan(files, { ...appliedHashes, ...partialHashes }, present);
+    const available = await availableAssetFiles(files, present);
+    clearInterval(checking);
+    const hashes = Object.fromEntries(files.filter(file => available.has(file.u)).map(file => [file.u, file.h]));
+    const plan = computeSyncPlan(files, hashes, available);
+    const keep = new Set(files.map(file => available.get(file.u) || offlineFileKey(file)));
+    plan.toRemove = [...present].filter(key => !keep.has(key));
+    const desiredPaths = new Set(files.map(file => file.u));
+    const removedPaths = new Set(plan.toRemove.map(key => key.split(ASSET_HASH_QUERY)[0])
+      .filter(path => !desiredPaths.has(path)));
     const shellReady = !msg.manifest.version || await shellIsComplete(msg.manifest);
+    const complete = Boolean(shellReady && appliedRecord && appliedRecord.digest === digest &&
+      files.length && plan.toFetch.length === 0 && removedPaths.size === 0);
     // A continuation can outlive its worker, but it must still belong to a
     // saved download. Another tab's Remove action deletes that checkpoint.
     if (!msg.dryRun && msg.continueJob && partialRecord?.digest !== digest) {
-      const complete = shellReady && appliedRecord?.digest === digest && plan.toFetch.length === 0 && plan.toRemove.length === 0;
       offlineJob = null;
       reply({ type: 'SYNC_DONE', batchId: msg.batchId, applied: complete, cancelled: !complete });
       return;
@@ -602,9 +653,9 @@ async function syncAssets(msg, reply) {
         digest, profile, shellReady, installedDigest: appliedRecord?.digest,
         installedProfile: appliedRecord ? appliedRecord.profile || 'full' : null,
         pendingProfile: partialRecord ? partialRecord.profile || 'full' : null,
-        fetchCount: plan.toFetch.length, removeCount: plan.toRemove.length, bytes: plan.bytes,
+        fetchCount: plan.toFetch.length, removeCount: removedPaths.size, bytes: plan.bytes,
         totalBytes: packFiles.reduce((sum, file) => sum + (file.b || 0), 0),
-        complete: Boolean(shellReady && appliedRecord && files.length && plan.toFetch.length === 0 && plan.toRemove.length === 0),
+        complete,
         resumable: Boolean(partialRecord && (partialRecord.profile || 'full') === profile),
         paused: partialRecord?.digest === digest && partialRecord.paused === true });
       return;
@@ -622,7 +673,7 @@ async function syncAssets(msg, reply) {
     job.bytes = plan.bytes;
     job.remainingBytes = plan.bytes;
     if (job.status === 'preparing') job.status = 'running';
-    const progress = new Map(Object.entries(partialHashes).map(([u, h]) => [u, { u, h }]));
+    const progress = new Map((partialRecord?.files || []).map(file => [file.u, file]));
     let removed = 0, applied = false, completedBatches = 0;
     if (job.total) await checkpointAssets(cache, progress, job);
     const update = () => reply({ type: 'SYNC_PROGRESS', batchId: msg.batchId, ...job });
@@ -636,7 +687,7 @@ async function syncAssets(msg, reply) {
         if (job.status === 'pausing') break;
         await Promise.all(batch.map(async file => {
           try {
-            await cache.put(file.u, await fetchOfflineAsset(file));
+            await cache.put(offlineFileKey(file), await fetchOfflineAsset(file));
             progress.set(file.u, { u: file.u, h: file.h });
             job.done++;
             job.remainingBytes -= file.b || 0;
@@ -666,15 +717,6 @@ async function syncAssets(msg, reply) {
     }
     job.status = 'finishing';
     if (job.failed === 0) {
-      for (const url of plan.toRemove) {
-        try {
-          if (await cache.delete(url)) removed++;
-        } catch (_) {
-          job.failed++;
-        }
-      }
-    }
-    if (job.failed === 0) {
       try {
         await cache.put(APPLIED_MANIFEST_KEY, new Response(JSON.stringify({ files, digest, profile, release: msg.manifest.version }),
           { headers: { 'Content-Type': 'application/json' } }));
@@ -682,6 +724,13 @@ async function syncAssets(msg, reply) {
         compactFrames = null;
         await cache.delete(OFFLINE_PROGRESS_KEY);
       } catch (_) { /* Existing asset files can still be used on a retry. */ }
+    }
+    if (applied) {
+      for (const key of plan.toRemove) {
+        try {
+          if (await cache.delete(key)) removed++;
+        } catch (_) { /* A deprecated extra file can be reclaimed on the next check. */ }
+      }
     }
     if (!applied) await checkpointAssets(cache, progress, job);
     job.status = applied ? 'complete' : 'incomplete';
@@ -692,9 +741,7 @@ async function syncAssets(msg, reply) {
     if (!msg.dryRun) offlineJob.status = 'incomplete';
     reply({ type, batchId: msg.batchId, failed: true });
   } finally {
-    if (!msg.dryRun) {
-      installedAssetCompatibility = null;
-      assetMutationInProgress = false;
-    }
+    clearInterval(checking);
+    if (!msg.dryRun) assetMutationInProgress = false;
   }
 }

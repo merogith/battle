@@ -20,6 +20,7 @@ const expireDraft = process.env.BATTLE_TEST_ROOM_DRAFT_TIMEOUT === '1';
 const recoverDraft = process.env.BATTLE_TEST_ROOM_DRAFT_RECOVERY === '1';
 const hostRules = process.env.BATTLE_TEST_ROOM_HOST_RULES === '1';
 const setupTimeout = process.env.BATTLE_TEST_ROOM_SETUP_TIMEOUT === '1';
+const departure = process.env.BATTLE_TEST_ROOM_DEPARTURE || '';
 const latencyMs = Number(process.env.BATTLE_TEST_ROOM_LATENCY_MS || 0);
 const out = process.env.BATTLE_TEST_ROOM_SHOTS;
 assert.ok([pivot, reconnect, series].filter(Boolean).length <= 1, 'Choose a single room fixture');
@@ -29,6 +30,7 @@ assert.ok(!expireDraft || parallelDraft, 'The draft expiration fixture follows t
 assert.ok(!recoverDraft || (pivot && !parallelDraft), 'The recovery fixture requires a sequenced two-member draft');
 assert.ok(!hostRules || (!pivot && !reconnect), 'Opposed room rules use a normal or best-of-three draft');
 assert.ok(Number.isFinite(latencyMs) && latencyMs >= 0 && latencyMs <= 1000);
+assert.ok(!departure || /^(host|guest)-(run|settings|back|draft|replacement|series|rejected|reconnect)$/.test(departure) || departure === 'host-waiting');
 if (out) await mkdir(out, { recursive: true });
 const partySize = hostRules && !series ? 6 : pivot ? 2 : 1;
 const timed = pivot || reconnect;
@@ -37,6 +39,8 @@ let draftFixtureRound = 0;
 const publishedTurns = [];
 let rejectNextGuestDraft = false;
 let blockGuestReads = false;
+let rejectDeparture = departure.endsWith('-rejected');
+let departureWrites = 0;
 let heldRoomRequest;
 
 function holdRoomRequest(name) {
@@ -72,16 +76,29 @@ function execute(request) {
       return { data: { ok: false } };
     }
     const patch = args.p_patch;
-    if ((pivot || reconnect || series) && patch.phase === 'draft' && patch.p1_pool && draftFixtureRound !== room.data.round_number) {
+    if (patch.p1_departure || patch.p2_departure) {
+      departureWrites++;
+      if (rejectDeparture) {
+        rejectDeparture = false;
+        return { data: { ok: false, error: 'mock_departure_rejected' } };
+      }
+    }
+    if ((pivot || reconnect || series || hostRules) && patch.phase === 'draft' && patch.p1_pool && draftFixtureRound !== room.data.round_number) {
       const bulky = [entry('Snorlax', 'Immunity', ['Tackle', 'Amnesia'])];
       if (pivot) bulky.push(entry('Lapras', 'Water Absorb', ['Water Gun']));
       const other = reconnect ? [entry('Chansey', 'Natural Cure', ['Tackle', 'Growl'])]
         : [entry('Scizor', 'Swarm', ['U-turn', 'Protect']), entry('Chansey', 'Natural Cure', ['Tackle'])];
-      [patch.p1_pool, patch.p2_pool] = hostPivot ? [other, bulky] : [bulky, other];
       if (series) {
         patch.p1_pool = [entry('Garchomp', 'Rough Skin', ['Earthquake'])];
         patch.p2_pool = [entry('Magnemite', 'Magnet Pull', ['Thunder Shock'])];
-      }
+      } else if (hostRules) {
+        // Keep the real rule-filtered pools and choose two legal, bulky leads so
+        // the settings fixture reaches a full turn without a random first-turn KO or pivot.
+        const { p1_pool: p1, p2_pool: p2 } = args.p_patch;
+        const guestLead = entry('Lapras', 'Water Absorb', ['Water Gun']);
+        patch.p1_pool = [...bulky, ...p1.filter(member => member.name !== bulky[0].name)];
+        patch.p2_pool = [guestLead, ...p2.filter(member => member.name !== guestLead.name)];
+      } else [patch.p1_pool, patch.p2_pool] = hostPivot ? [other, bulky] : [bulky, other];
       draftFixtureRound = room.data.round_number;
     }
     if (patch.battle?.resolved_turn) publishedTurns.push(patch.battle.resolved_turn);
@@ -277,13 +294,77 @@ async function assertPendingRoomForm(page, form, hold) {
   assert.ok(await form.isVisible(), 'Escape keeps a pending room request on its form');
 }
 
-try {
+roomPlaythrough: try {
   const desktop = { viewport: { width: 1366, height: 900 } };
   const phone = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true };
   const host = await openPlayer(swapDevices ? phone : desktop);
   const guest = await openPlayer(swapDevices ? desktop : phone, 'guest');
   const hostPress = locator => swapDevices ? locator.tap() : locator.click();
   const guestPress = locator => swapDevices ? locator.click() : locator.tap();
+  const leavingGuest = departure.startsWith('guest-');
+  const leaving = leavingGuest ? guest : host;
+  const remaining = leavingGuest ? host : guest;
+  const leavePress = leavingGuest ? guestPress : hostPress;
+  const leaveCase = departure.split('-')[1];
+  async function verifyDeparture(where = leaveCase) {
+    const confirm = leaving.locator('#modal-game-confirm');
+    const quit = async () => {
+      if (where === 'series') {
+        await leavePress(leaving.locator('#modal-end-screen').getByRole('button', { name: 'Return to Main Menu' }));
+        return;
+      }
+      if (where === 'back') await leaving.evaluate(() => history.back());
+      else if (where === 'settings' || where === 'draft' || where === 'replacement') {
+        if (where === 'replacement') {
+          await leavePress(leaving.locator('#modal-party').getByRole('button', { name: 'Forfeit match', exact: true }));
+        } else {
+          await leavePress(leaving.getByRole('button', { name: 'Settings', exact: true }).filter({ visible: true }).first());
+          await leavePress(leaving.locator('#settings-exit-btn'));
+        }
+      } else await leavePress(leaving.locator('#command-menu [data-cmd="run"]'));
+      await leavePress(confirm.getByRole('button', { name: 'OK', exact: true }));
+    };
+    const roomSeq = room.data.seq;
+    const resolved = room.data.battle.resolved_turn;
+    const oldScores = [room.data.p1_wins, room.data.p2_wins];
+    if (where === 'reconnect') await remaining.evaluate(() => window.__roomTransport.drop());
+    if (where === 'rejected') {
+      await quit();
+      await leaving.getByText('Could not leave the room. Check your connection and try again.').waitFor();
+      assert.equal(room.data.seq, roomSeq);
+      assert.equal(room.data.phase, 'battle');
+      assert.ok(await remaining.locator('#modal-end-screen').isHidden());
+      await leavePress(leaving.locator('#modal-game-alert button').last());
+    }
+    await quit();
+    const player = leavingGuest ? 2 : 1;
+    const winner = 3 - player;
+    await waitForRoom(() => room.data[`p${player}_departure`]);
+    if (where === 'reconnect') {
+      assert.ok(await remaining.locator('#modal-end-screen').isHidden());
+      await remaining.evaluate(() => {
+        window.__roomTransport.restore();
+        window.__roomTransport.subscribeAgain();
+      });
+    }
+    const result = remaining.locator('#modal-end-screen');
+    await result.getByRole('heading', { name: where === 'draft' ? 'Room closed' : 'You win by forfeit' }).waitFor();
+    assert.ok(await result.evaluate(el => el.contains(document.activeElement)));
+    assert.equal(room.data.phase, 'done');
+    assert.equal(room.data.battle.resolved_turn, resolved, 'departure never resolves an extra simulator turn');
+    assert.equal(room.data.battle_turn_deadline_iso, null);
+    assert.equal(room.data.draft_deadline_iso, null);
+    if (!['draft', 'series'].includes(where)) oldScores[winner - 1]++;
+    assert.deepEqual([room.data.p1_wins, room.data.p2_wins], oldScores);
+    assert.equal(await remaining.evaluate(() => window.OnlineBattle.myTurn(state)), false);
+    assert.ok(await result.locator('#btn-online-rematch').isHidden());
+    assert.ok(await result.locator('#online-rematch-waiting').isHidden());
+    if (['settings', 'back', 'draft', 'series', 'replacement'].includes(where)) await leaving.locator('#screen-menu').waitFor();
+    else await leaving.getByRole('heading', { name: 'Match forfeited' }).waitFor();
+    assert.equal(departureWrites, where === 'rejected' ? 2 : 1);
+    assert.deepEqual(failures, []);
+    console.log(`Online ${departure}: matching terminal room receipt, scores, focus, turn lock and exit confirmed.`);
+  }
   const screenshot = (peer, key) => out ? peer.screenshot({ path: join(out, key + '.png') }) : Promise.resolve();
   if (hostRules) await Promise.all([selectRoomRulePreferences(host, true), selectRoomRulePreferences(guest, false)]);
   else {
@@ -294,6 +375,7 @@ try {
   }
   const hostPrefs = hostRules ? await roomPrefs(host) : null;
   const guestPrefs = hostRules ? await roomPrefs(guest) : null;
+  const savedGuestPrefs = hostRules ? await roomPrefs(guest, true) : null;
   const assertHostRules = async () => {
     assert.equal(hostPrefs.partySize, partySize);
     assert.equal(guestPrefs.partySize, 3);
@@ -352,6 +434,23 @@ try {
   await host.locator('#screen-draft').waitFor({ state: 'visible', timeout: 30000 });
   assert.ok(room?.code);
 
+  if (leaveCase === 'waiting') {
+    await hostPress(host.getByRole('button', { name: 'Close room' }));
+    await hostPress(host.locator('#modal-game-confirm').getByRole('button', { name: 'OK', exact: true }));
+    await host.locator('#screen-menu').waitFor();
+    await guestPress(mode(guest, /Join online/i));
+    const join = guest.locator('#modal-online-pvp');
+    await join.getByLabel('Room code').fill(room.code);
+    await guestPress(join.getByRole('button', { name: 'Join', exact: true }));
+    await join.getByText('This room has closed. Ask for a new code.').waitFor();
+    assert.equal(room.data.guest_joined, false);
+    assert.equal(room.data.phase, 'done');
+    assert.equal(departureWrites, 1);
+    assert.deepEqual(failures, []);
+    console.log('Online host-waiting: cancelling the invitation rejected late joins with the old code.');
+    break roomPlaythrough;
+  }
+
   await guestPress(mode(guest, /Join online/i));
   const form = guest.locator('#modal-online-pvp');
   await form.getByLabel('Room code').fill(room.code);
@@ -361,6 +460,10 @@ try {
   guestReply.release();
   await guest.locator('#screen-draft').waitFor({ state: 'visible' });
   await host.waitForFunction(() => window.OnlineBattle.canUseNativeBattle());
+  if (leaveCase === 'draft') {
+    await verifyDeparture();
+    break roomPlaythrough;
+  }
   if (hostRules) {
     await assertHostRules();
     if (partySize === 1) assert.ok(await guest.locator('#draft-party-bar').isHidden());
@@ -368,7 +471,7 @@ try {
     await guestPress(guest.getByRole('button', { name: 'Settings', exact: true }).filter({ visible: true }).first());
     const guestSettings = guest.locator('#modal-settings');
     await guestSettings.getByRole('combobox', { name: 'Battle speed', exact: true }).selectOption('fast');
-    assert.deepEqual(await roomPrefs(guest, true), guestPrefs, 'a settings save during the match preserves local rule preferences');
+    assert.deepEqual(await roomPrefs(guest, true), savedGuestPrefs, 'a settings save during the match preserves local rule preferences');
     await guestSettings.getByRole('combobox', { name: 'Battle speed', exact: true }).selectOption('instant');
     await guestPress(guestSettings.getByRole('button', { name: 'Close settings' }));
     await screenshot(guest, 'guest-host-rules');
@@ -474,6 +577,10 @@ try {
   await hostPress(fight(host));
   await move(host, hostPivot ? 'U-turn' : pivot ? 'Tackle' : reconnect ? 'Amnesia' : null);
   await guest.waitForFunction(() => window.OnlineBattle.myTurn(state));
+  if (departure && !['series', 'replacement'].includes(leaveCase)) {
+    await verifyDeparture();
+    break roomPlaythrough;
+  }
   if (reconnect) {
     await host.waitForFunction(() => !window.OnlineBattle.myTurn(state));
     await guest.evaluate(() => window.__roomTransport.drop());
@@ -494,6 +601,10 @@ try {
       await Promise.all([screenshot(host, `host-round-${round}`), screenshot(guest, `guest-round-${round}`)]);
     };
     await verifyRound(1);
+    if (leaveCase === 'series') {
+      await verifyDeparture();
+      break roomPlaythrough;
+    }
     await rematch.waitFor();
     assert.ok(await guest.locator('#online-rematch-waiting').isVisible());
     assert.ok(await guest.locator('#btn-online-rematch').isHidden());
@@ -539,6 +650,10 @@ try {
     assert.ok(Date.parse(deadline) > Date.now() + 24_000, 'a replacement starts with a fresh Fast timer');
     for (const player of [actor, opponent]) {
       await player.waitForFunction(value => window.__onlineBattleDeadlineIso === value, deadline);
+    }
+    if (leaveCase === 'replacement') {
+      await verifyDeparture();
+      break roomPlaythrough;
     }
     await Promise.all([screenshot(actor, 'replacement-actor'), screenshot(opponent, 'replacement-waiting')]);
     if (expireReplacement) {
@@ -623,7 +738,7 @@ try {
     }
     await guest.locator('#screen-menu').waitFor();
     assert.deepEqual(await roomPrefs(guest), guestPrefs);
-    assert.deepEqual(await roomPrefs(guest, true), guestPrefs);
+    assert.deepEqual(await roomPrefs(guest, true), savedGuestPrefs);
     console.log('Both seats used the host’s draft size and battle rules. The guest’s saved menu options and animation setting survived the room.');
   }
   if (recoverDraft) console.log('The same draft card retried after rejection and applied the RPC receipt while Realtime and head reads were unavailable.');

@@ -3,6 +3,15 @@
 All notable user-visible changes land here. Sessions append entries under
 `## Unreleased` and a date/branch heading.
 
+## 2.0.6 — Cleaner menus and safer Story saves
+
+- Towns put the next step first. Shop and training screens keep prices and decisions in view, and the Crucible now offers direct access to Party, Bag, and the Trainer’s Notebook.
+- Battle options open without downloading battle data. Quick Draft respects the chosen generations and grades, avoids duplicate species across both teams, and explains when there aren’t enough eligible Pokémon.
+- Pokémon summaries and training previews preserve your encounter seed. PC filters recover after the last matching Pokémon leaves the Box, and missing shiny art can fall back to the ordinary sprite. Cable Link protects favorites and story-locked partners from permanent trades.
+- Continue resumes the last saved Showdown turn in Vespergate’s first Mystery Figure fight. Retry keeps the same opponent roster. Safari keeps the visit open if saving the exit fails, and Fight Club retains your chosen trio if entry fails to save.
+- Required switches stay open until you choose a replacement. Gauntlet scores, Summary, and save recovery are easier to use with a keyboard and on short phone screens.
+- Added a [game reference](docs/game-reference/README.md) covering screens, facilities, story branches, progression rules, and the checks that keep the inventory current.
+
 ## 2.0.5 — North Road world and interface update
 
 - Towns, roads, Camp, and facilities have distinct artwork and local sound. The Atlas tracks places you’ve visited and discoveries you’ve made. Gym rounds, raids, and legendary encounters have their own entrances and battle cues.

@@ -133,6 +133,8 @@ try {
   await page.evaluate(() => window.__devAutoWinBattle());
   await result.getByRole('heading', { name: 'Trainer cleared · 2 of 3' }).waitFor();
   const faceLeader = result.getByRole('button', { name: 'Face the leader' });
+  assert.equal(await result.locator('[data-encounter-caption]').innerText(),
+    'The upper court is open. Leave the lakeside doors clear.');
   const second = await run();
   assert.equal(second.pendingBattleResult.nextRowId, 31);
   assert.equal(await trainersWon(), 2);

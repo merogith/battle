@@ -12,11 +12,15 @@ const { window } = eng;
 const SM = window.StoryMode;
 const sm = SM.state;
 const storage = new Map();
+let denySave = false;
 Object.defineProperty(window, 'localStorage', {
   configurable: true,
   value: {
     getItem: key => storage.get(key) ?? null,
-    setItem: (key, value) => storage.set(key, String(value)),
+    setItem: (key, value) => {
+      if (denySave && key === 'pbs_story_save') throw new Error('Storage is read-only');
+      storage.set(key, String(value));
+    },
     removeItem: key => storage.delete(key),
   },
 });
@@ -70,6 +74,7 @@ function setupStory(nicks) {
 const doc = window.document;
 const $ = (id) => doc.getElementById(id);
 const flushTimers = () => new Promise(r => setTimeout(r, 450));
+const finishConfirmation = () => new Promise(r => setTimeout(r, 0));
 
 test('memorial defaults: empty lists, zero counters', () => {
   setupStory();
@@ -119,13 +124,35 @@ test('forfeit memorializes your three; honors player nicknames, fills random for
   forfeit.click();
   assert.match($('modal-game-confirm-text').textContent, /Champ, Gengar, Pickles/);
   confirm.querySelector('button[onclick*="false"]').click();
-  await Promise.resolve();
+  await finishConfirmation();
   assert.equal(sm.memorial?.totalFallen || 0, 0);
+
+  const previous = storage.get('pbs_story_save');
+  const roster = sm.team;
+  const bracket = sm.pits;
+  denySave = true;
+  try {
+    forfeit.click();
+    confirm.querySelector('button[onclick*="true"]').click();
+    await finishConfirmation();
+    assert.equal(sm.team, roster, 'Keep the active trio available for retry');
+    assert.equal(sm.pits, bracket, 'Keep the current bracket and exact opponent');
+    assert.equal(sm.memorial?.totalFallen || 0, 0);
+    assert.equal(storage.get('pbs_story_save'), previous);
+    assert.match($('pits-forfeit-status').textContent, /could not save/i);
+    assert.equal(doc.activeElement, forfeit);
+  } finally {
+    denySave = false;
+  }
+
   forfeit.click();
   confirm.querySelector('button[onclick*="true"]').click();
-  await Promise.resolve();
+  await finishConfirmation();
   assert.equal(sm.memorial.totalFallen, 3, 'all three fighters memorialized');
   assert.equal(sm.memorial.fallen.length, 3);
+  const saved = JSON.parse(storage.get('pbs_story_save'));
+  assert.equal(saved.memorial.totalFallen, 3);
+  assert.ok(saved.team.every(slot => !sentIds.includes(slot.id)));
   // unshift order = newest first; the LAST sent (Garchomp[0], Gengar[1], Lapras[2]) were pushed
   // in iteration order, so the head of the list is the last pushed = Lapras (nickname 'Pickles').
   const nicks = sm.memorial.fallen.map(e => e.nick);

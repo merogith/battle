@@ -13,9 +13,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, installWritableStorage } from '../helpers/load-engine.js';
 
 const E = await loadEngine();
+installWritableStorage(E.window);
 const eng = E.window.__hpTest; // inner-scope test surface for HP mentor/tutor internals
 
 test('the Diviner mentor scene exists and unlocks Hidden Power on continue', () => {

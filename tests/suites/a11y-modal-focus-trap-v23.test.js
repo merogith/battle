@@ -15,7 +15,11 @@ const { window } = h;
 const { document } = window;
 
 function closeAllModals() {
-    document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden'));
+    // Closing a dialog also releases its focus snapshot and the inert backdrop.
+    // Toggling CSS alone leaves that state registered for the following case.
+    for (const modal of [...document.querySelectorAll('.modal:not(.hidden)[id]')].reverse()) {
+        window.closeModal(modal.id, { restoreFocus: false });
+    }
 }
 function pressTab(shift = false) {
     const e = new window.KeyboardEvent('keydown', { key: 'Tab', shiftKey: shift, bubbles: true, cancelable: true });

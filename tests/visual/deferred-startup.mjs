@@ -1,4 +1,4 @@
-/* global state */
+/* global state, getTypeDefensiveInfo */
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -9,7 +9,7 @@ const publicTitle = new URL('./', url);
 const { version } = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'));
 const output = process.env.BATTLE_PLAYTEST_OUT;
 const browser = await chromium.launch({ executablePath: process.env.BATTLE_TEST_CHROMIUM });
-const heavy = /\/(?:vendor\/pkmn-dex[^/]*\.js|data\/(?:species\.json|moves\.json|builds\.csv)|competitive\/showdown-engine\.js|offline-assets\.json|sw\.js)$/;
+const heavy = /\/(?:vendor\/pkmn-dex[^/]*\.js|data\/[^?#]+\.(?:json|csv)|competitive\/(?:showdown-engine|showdown-worker|classic-simulation)\.js|offline-assets\.json|sw\.js)$/;
 const report = {};
 
 async function fresh() {
@@ -41,6 +41,7 @@ const transfer = page => page.evaluate(() => {
   const entries = [...performance.getEntriesByType('navigation'), ...performance.getEntriesByType('resource')];
   return {
     encodedBytes: entries.reduce((sum, entry) => sum + (entry.encodedBodySize || 0), 0),
+    compressed: entries.some(entry => entry.encodedBodySize > 0 && entry.decodedBodySize > entry.encodedBodySize),
     largest: entries.map(entry => ({ path: new URL(entry.name).pathname, bytes: entry.encodedBodySize || 0 }))
       .sort((a, b) => b.bytes - a.bytes).slice(0, 8),
   };
@@ -69,6 +70,21 @@ try {
     assert.equal(await page.evaluate(async () => Boolean(await navigator.serviceWorker.getRegistration())), false);
     report.menu = await transfer(page);
 
+    const battleOptions = page.getByRole('button', { name: 'Battle options', exact: true });
+    await page.locator('#menu-more-play-summary').click();
+    await battleOptions.click();
+    await page.getByRole('radio', { name: 'Custom…', exact: true }).click();
+    await page.getByRole('button', { name: 'Gen 1 only', exact: true }).click();
+    await page.locator('#grade-4-cb').uncheck();
+    assert.match(await page.locator('#classic-battle-summary').innerText(), /Gen 1 pool/);
+    assert.equal(await page.locator('#pool-count-display').isVisible(), false);
+    assert.equal(await page.locator('#app-loading-overlay').isVisible(), false);
+    assert.equal(await page.locator('#app-root').evaluate(root => root.inert), false);
+    assert.deepEqual(requests.filter(path => heavy.test(path)), [], 'reading and changing Battle options stays lightweight');
+    await page.getByRole('radio', { name: 'Standard', exact: true }).click();
+    await battleOptions.click();
+    report.coldBattleOptions = true;
+
     let dexFailed = false;
     await page.route('**/vendor/pkmn-dex.min.js', route => {
       if (dexFailed) return route.continue();
@@ -81,9 +97,23 @@ try {
       failed = true;
       return route.abort();
     });
+    let rejectedShops = false;
+    let testShopFailure = false;
+    await page.route('**/data/story/shops.json', route => {
+      if (!testShopFailure || rejectedShops) return route.continue();
+      rejectedShops = true;
+      return route.fulfill({ status: 200, json: { pokemart: [], dept: [], stone: [] } });
+    });
+    let refusedQuotes = 0;
+    let glitchyLeaderLines = 0;
     const story = page.getByRole('button', { name: /Story Mode/ });
     const alert = page.locator('#modal-game-alert');
-    for (const hasFailed of [() => dexFailed, () => failed]) {
+    for (const [armFault, hasFailed] of [
+      [() => {}, () => dexFailed],
+      [() => {}, () => failed],
+      [() => { testShopFailure = true; }, () => rejectedShops],
+    ]) {
+      armFault();
       await story.click();
       await alert.waitFor({ state: 'visible' });
       assert.ok(hasFailed());
@@ -91,8 +121,38 @@ try {
       assert.equal(await page.evaluate(() => localStorage.getItem('pbs_story_save')), null);
       await alert.getByRole('button', { name: 'OK', exact: true }).click();
     }
+    await page.route('**/data/dialogue/city-guide-quotes.json', async route => {
+      refusedQuotes++;
+      await route.fulfill({ status: 503, body: 'Service unavailable' });
+    });
+    await page.route('**/data/dialogue/leader-victory-lines.json', async route => {
+      if (++glitchyLeaderLines > 1) return route.continue();
+      await route.fulfill({ status: 200, json: { Brock: [42] } });
+    });
+    await page.evaluate(() => {
+      const overlay = document.getElementById('app-loading-overlay');
+      window.bootStatuses = [];
+      new MutationObserver(() => {
+        if (!overlay.classList.contains('hidden')) window.bootStatuses.push(overlay.textContent.trim());
+      }).observe(overlay, { attributes: true, childList: true, subtree: true, characterData: true });
+    });
     await story.click();
     await page.locator('#screen-story-menu').waitFor({ state: 'visible' });
+    assert.equal(refusedQuotes, 2);
+    assert.equal(glitchyLeaderLines, 2);
+    report.dataRecovery = await page.evaluate(() => ({
+      statuses: [...new Set(window.bootStatuses)],
+      typeRows: Object.keys(window.typeChart).length,
+      fireWeakness: getTypeDefensiveInfo('Grass').weakTo.includes('Fire'),
+      normalImmunity: getTypeDefensiveInfo('Ghost').immuneTo.includes('Normal'),
+      workingShop: window.POKEMART_ITEMS.some(item => item.id === 'pokeBall' && item.price > 0),
+      trainerLine: Boolean(window.LEADER_VICTORY_LINES.Brock),
+      optionalFallback: window.CITY_GUIDE_QUOTES.length === 0,
+    }));
+    assert.deepEqual(report.dataRecovery, {
+      statuses: ['Preparing battle data…'], typeRows: 19, fireWeakness: true, normalImmunity: true,
+      workingShop: true, trainerLine: true, optionalFallback: true,
+    });
     assert.ok(requests.some(path => path.endsWith('/data/builds.csv')));
     await page.locator('#screen-story-menu').getByRole('button', { name: /New Adventure/ }).click();
     await page.getByRole('textbox', { name: 'Trainer name', exact: true }).fill('Field Tester');
@@ -134,11 +194,44 @@ try {
     await match.waitForFunction(previous => state.isOver || (!state.isLocked &&
       (state.turnNumber > previous || state.nativeRequests[0]?.phase === 'replace')), turn);
     report.firstNativeAction = await transfer(match);
+    if (report.firstNativeAction.compressed || url.pathname.includes('/dist/')) {
+      assert.ok(report.firstNativeAction.encodedBytes > 0 && report.firstNativeAction.encodedBytes < 5 * 1024 * 1024,
+        `The first native action fits 5 MiB (transferred ${report.firstNativeAction.encodedBytes} bytes)`);
+      report.firstNativeActionBudget = 'verified';
+    } else report.firstNativeActionBudget = 'requires HTTP compression';
     assert.deepEqual(matchErrors, []);
   } finally {
     await matchContext.close();
   }
-  console.log('Deferred title, settings, retry, Continue, and native Quick Battle verified.', JSON.stringify(report, null, 2));
+
+  const { context: draftContext, page: draft, requests: draftRequests, errors: draftErrors } = await fresh();
+  try {
+    await draft.goto(publicTitle.href, { waitUntil: 'load' });
+    await draft.locator('#menu-more-play-summary').click();
+    await draft.getByRole('link', { name: 'Battle options', exact: true }).click();
+    await draft.getByRole('radio', { name: 'Custom…', exact: true }).click();
+    await draft.getByRole('button', { name: 'Gen 1 only', exact: true }).click();
+    for (const grade of [2, 3, 4]) await draft.locator(`#grade-${grade}-cb`).uncheck();
+    await draft.locator('#party-size-select').selectOption('4');
+    assert.deepEqual(draftRequests.filter(path => heavy.test(path)), []);
+
+    const gauntlet = draft.getByRole('button', { name: 'Gauntlet', exact: true });
+    await gauntlet.click();
+    const draftAlert = draft.locator('#modal-game-alert');
+    await draftAlert.waitFor();
+    assert.match(await draftAlert.innerText(), /A 4v4 match needs 8 different species\. This pool has 6/);
+    await draftAlert.getByRole('button', { name: 'OK', exact: true }).click();
+    assert.match(await draft.locator('#pool-count-display').innerText(), /6 eligible species/);
+    await draft.locator('#party-size-select').selectOption('3');
+    await gauntlet.click();
+    await draft.locator('#draft-grid .draft-card').first().waitFor();
+    assert.equal(await draft.evaluate(() => state.p1Pool.length === 3 && state.p2Pool.length === 3), true);
+    assert.deepEqual(draftErrors, []);
+    report.narrowDraftRecovery = true;
+  } finally {
+    await draftContext.close();
+  }
+  console.log('Deferred title, settings, battle options, retry, Continue, and native Quick Battle verified.', JSON.stringify(report, null, 2));
   if (output) {
     await mkdir(output, { recursive: true });
     await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n');

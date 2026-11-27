@@ -79,6 +79,36 @@ test('extra arc is acknowledged when only its beat fired', () => {
     assert.equal(ST.lastRoadArcForCity(ord), 'cubone', 'extra acknowledged when the villain track was quiet');
 });
 
+test('all runs of adjacent trainers retain one physical route and a single departure', () => {
+    const roads = [[1], [7, 8], [14, 15], [12, 20, 21], [26, 27], [33, 34], [39, 41, 42], [48, 49], [56, 57, 58]];
+    const rows = ST.STORY_EVENTS_RAW;
+    roads.forEach((ids, fromCity) => {
+        ids.forEach((id, slot) => {
+            const eventIndex = rows.findIndex(row => row[0] === id);
+            const route = ST.routeCitiesForBattle(eventIndex);
+            assert.equal(route?.fromCity, fromCity, `row ${id} leaves city ${fromCity}`);
+            assert.equal(route?.toCity, fromCity + 1, `row ${id} arrives at city ${fromCity + 1}`);
+            if (slot === 0) return;
+            ST.sm = { ...ST.sm, eventIndex, routeShown: {} };
+            assert.equal(ST.maybeShowRouteInterstitial(rows[eventIndex], () => {}), false, `row ${id} has no second departure`);
+        });
+    });
+    for (const id of [68, 5, 38, 60, 65, 67]) {
+        assert.equal(ST.routeCitiesForBattle(rows.findIndex(row => row[0] === id)), null, `row ${id} is an indoor or local fight`);
+    }
+});
+
+test('late anomaly that resolves on Mineshaft Pass reaches Kettlestone instead of Flintreach', () => {
+    const key = keyAtOrd(ST.EXTRA_STORY_BEATS.cubone, 1);
+    const row = ST.STORY_EVENTS_RAW.findIndex(entry => entry[0] === 8);
+    ST.sm = { ...ST.sm, eventIndex: row, tracks: { extra: 'cubone' }, storyEventsFired: {}, storyEventHostRows: {} };
+    W._storyResolveBeatBySkip(key, ST.STORY_EVENTS_RAW[row], () => {});
+    assert.equal(ST.sm.storyEventsFired[key], true);
+    assert.equal(ST.sm.storyEventHostRows[key], 8, 'stable row ID survives advance to the next city');
+    assert.equal(ST.lastRoadArcForCity(1), '');
+    assert.equal(ST.lastRoadArcForCity(2), 'cubone');
+});
+
 test('anomaly seed renders on the diegetic overlay (not a system alert) and fires once', () => {
     ST.sm = Object.assign({}, ST.sm, { scenesShown: {} });
     Array.from(document.querySelectorAll('.story-anomaly')).forEach(n => n.remove());

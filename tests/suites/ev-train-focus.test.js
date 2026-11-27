@@ -9,7 +9,7 @@
 //   node --test tests/suites/ev-train-focus.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const W = eng.window;
@@ -153,6 +153,7 @@ test('the grant stays story-only-safe: crucible battles never train', () => {
 });
 
 test('StoryMode.setEvTrainFocus persists and clears the focus, and it survives a save round-trip', () => {
+  installWritableStorage(W);
   const team = [monFresh('Pikachu')];
   setSm(team);
   W.StoryMode.setEvTrainFocus(0, ['atk', 'def', 'spe']);
@@ -162,12 +163,11 @@ test('StoryMode.setEvTrainFocus persists and clears the focus, and it survives a
   W.StoryMode.setEvTrainFocus(0, ['spa', 'bogus']);
   assert.deepEqual(team[0].build.evTrainFocus, ['spa'], 'only valid stat keys are stored');
 
-  // save() serializes the whole sm verbatim, so the field round-trips with no
-  // migration — a JSON clone of the build is the proxy for that persistence.
-  const roundTrip = JSON.parse(JSON.stringify(team[0].build));
-  assert.deepEqual(roundTrip.evTrainFocus, ['spa'], 'focus survives the save/load JSON round-trip');
+  const persistedBuild = () => JSON.parse(W.localStorage.getItem(W.GameStorage.storyKey)).team[0].build;
+  assert.deepEqual(persistedBuild().evTrainFocus, ['spa'], 'focus is in the saved run');
 
   // Empty/invalid selection clears the field back to Auto (absent).
   W.StoryMode.setEvTrainFocus(0, []);
   assert.equal('evTrainFocus' in team[0].build, false, 'clearing the focus removes the field (Auto)');
+  assert.equal('evTrainFocus' in persistedBuild(), false, 'the cleared focus is saved');
 });

@@ -12,6 +12,10 @@ The **Battles** menu offers **Quick Battle** for a single CPU match, **Gauntlet*
 
 Use **Settings → App & data** to export a backup or manage the installation. The title screen offers Compact and Full offline downloads. Restore a backup when moving to another device. [Player playtest](docs/PLAYER_PLAYTEST.md) · [Build and release checks](docs/north-road/RELEASE.md)
 
+## Game reference
+
+The [game reference](docs/game-reference/README.md) indexes player screens, NPCs, tools, story branches, mechanics, and design sources. Run `npm run audit:game -- --scope city` to find the full scope of town and facility work, or append `--json` for source IDs and test cases.
+
 ## Battle engine and testing
 
 Story and the standard battle modes use a Showdown simulator adapter for damage, action order, abilities and status. Story adds its own level, equipment, encounter and transformation rules around that simulator. Competitive Arena uses the rules of the selected format. The test suites cover deterministic retries, native battle behavior, and legacy-engine comparisons against Showdown.

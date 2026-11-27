@@ -4,6 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { offlinePack, verifyReleaseGraph } from './build-release-graph.mjs';
 
 const { values } = parseArgs({ options: {
   verify: { type: 'boolean' },
@@ -25,6 +26,7 @@ for (const file of manifest.files) {
     throw new Error(`Unapproved release path: ${relative}`);
   }
   if (publishedFiles.has(relative)) throw new Error(`Duplicate release path: ${relative}`);
+  if (file.p !== offlinePack(relative)) throw new Error(`Invalid offline pack: ${relative}`);
   publishedFiles.add(relative);
   const bytes = fs.readFileSync(path.join(source, relative));
   totalBytes += bytes.length;
@@ -45,6 +47,7 @@ const workerVersion = worker.match(/const CACHE_VERSION = '([^']+)';/)?.[1];
 if (!publishedFiles.has('sw.js') || !workerVersion || workerVersion !== manifest.version) {
   throw new Error('Service worker version does not match the release manifest');
 }
+const reachable = verifyReleaseGraph(source, publishedFiles);
 const supplementalFiles = ['offline-assets.json', 'ATTRIBUTION.md', 'LICENSE', '.nojekyll'].filter(name =>
   fs.existsSync(path.join(root, name)));
 if (verify) {
@@ -74,4 +77,4 @@ if (verify) {
   }
   fs.writeFileSync(path.join(out, 'release.json'), JSON.stringify(metadata, null, 2) + '\n');
 }
-console.log(`Verified ${manifest.fileCount} files; Pages artifact: ${path.relative(root, out)}/ (${manifest.version})`);
+console.log(`Verified ${manifest.fileCount} files and ${reachable.size} reachable paths; Pages artifact: ${path.relative(root, out)}/ (${manifest.version})`);

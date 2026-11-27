@@ -48,12 +48,13 @@ function theFirstBlock() {
 test('the Mystery cold-open commits to dread, not exposition', () => {
   const b = mysteryIntroBlock();
   // new — behavioral / sensory clues the player can verify mid-fight
-  assert.ok(/in your colors, under a cap like yours/.test(b), 'intro: the mirror clue (colors + cap)');
-  assert.ok(/you have met all six before/.test(b), 'intro: the team-mirror clue');
-  assert.ok(/Never before\./.test(b), 'intro: the withholding tell');
+  assert.match(b, /same colors as yours.*your hand moves with theirs/, 'the outfit and matching motion hint at who is inside');
+  assert.match(b, /I know what you’re going to lead with.*first ball/, 'the opponent recognizes the player’s lead');
+  assert.match(b, /I could tell you why.*showed me I’m wrong/, 'the figure leaves the reveal for after the battle');
   // old — vague-yet-spoilery lines are gone
   assert.ok(!/the chair will tell you the rest after/.test(b), 'intro: the old vague line is gone');
   assert.ok(!/A figure waits in the chamber the Champion vacated/.test(b), 'intro: the old opener is gone');
+  assert.doesNotMatch(b, /every version of you|End this loop/, 'the intro keeps the twist out of dialogue');
 });
 
 test('the_first barks imply the twist through behavior, never state it', () => {

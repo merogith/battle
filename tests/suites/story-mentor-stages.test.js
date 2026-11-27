@@ -9,9 +9,10 @@
 //   node --test tests/suites/story-mentor-stages.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, installWritableStorage } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
+installWritableStorage(eng.window);
 const w = eng.window;
 const ST = w.__storyTest;
 const doc = w.document;

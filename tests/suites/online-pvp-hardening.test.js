@@ -109,6 +109,17 @@ async function pairedBattle(t, nativeRequests = null) {
                     return { data: { ok: true } };
                 }
                 const patch = args.p_patch;
+                if (patch.p1_departure || patch.p2_departure) {
+                    server.departures ||= [];
+                    server.departures.push(structuredClone(patch));
+                    if (server.failDeparture) {
+                        if (server.failDeparture === 'after commit') write(patch);
+                        server.failDeparture = null;
+                        return { data: null, error: { message: 'departure reply lost' } };
+                    }
+                    write(patch);
+                    return { data: { ok: true, data: structuredClone(server.row.data) } };
+                }
                 if (patch.battle?.resolved_turn > (server.row.data.battle?.resolved_turn || 0)) {
                     server.staged.push(structuredClone(patch));
                     if (server.dropGuestAtResolution) server.guestDisconnected = true;
@@ -175,6 +186,75 @@ async function pairedBattle(t, nativeRequests = null) {
         hostChannel: clients[0]._channels[0], guestChannel: clients[1]._channels[0],
     };
 }
+
+for (const role of [1, 2]) {
+    test(`player ${role} can forfeit a pending battle exactly once`, async t => {
+        const { host, guest, hostState, guestState, server, write, guestChannel } = await pairedBattle(t);
+        const quitter = role === 1 ? host : guest;
+        const opponent = role === 1 ? guest : host;
+        host.w.onOnlineRoomData = () => {};
+        guest.w.onOnlineRoomData = () => {};
+        const selected = { moveIndex: 0, switchIndex: null, aiMove: null };
+        await host.OB.handlePvPPlayTurn(hostState, selected, {});
+        server.guestDisconnected = true;
+        server.failDeparture = 'after commit';
+        const first = quitter.OB.requestDeparture();
+        const duplicate = quitter.OB.requestDeparture();
+        assert.equal(first, duplicate);
+        assert.equal(await first, true, 'a dropped response is reconciled from the room head');
+        assert.equal(server.departures.length, 1);
+        assert.equal(server.row.data.phase, 'done');
+        assert.equal(server.row.data[`p${3 - role}_wins`], 1);
+        assert.equal(server.row.data.battle.resolved_turn, 0);
+        // An already in-flight ordinary patch must not resurrect the room.
+        write({ phase: 'battle', p1_wins: 0, p2_wins: 0 });
+        guestChannel._cb('CHANNEL_ERROR');
+        guestChannel._cb('SUBSCRIBED');
+        await until(() => opponent.OB.getDeparture(), 'other player receives confirmed forfeit');
+        assert.deepEqual(host.OB.getDeparture(), guest.OB.getDeparture());
+        assert.equal(host.OB.getDeparture().winner, 3 - role);
+        assert.equal(host.OB.myTurn(hostState), false);
+        assert.equal(guest.OB.myTurn(guestState), false);
+        assert.equal(await quitter.OB.requestDeparture(), true);
+        assert.equal(server.departures.length, 1);
+    });
+}
+
+test('a denied departure keeps the live room actionable before a retry', async t => {
+    const { host, guest, hostState, server } = await pairedBattle(t);
+    host.w.onOnlineRoomData = () => {};
+    guest.w.onOnlineRoomData = () => {};
+    server.failDeparture = 'before commit';
+    assert.equal(await host.OB.requestDeparture(), false);
+    assert.equal(server.row.data.phase, 'battle');
+    assert.equal(host.OB.myTurn(hostState), true);
+    assert.equal(guest.OB.getDeparture(), null);
+    assert.equal(await host.OB.requestDeparture(), true);
+    await until(() => guest.OB.getDeparture(), 'successful retry reaches the guest');
+    assert.equal(guest.OB.getDeparture().winner, 2);
+});
+
+test('a confirmed departure wins the race against an in-progress simulator result', async t => {
+    const { host, guest, hostState, server, sendBothActions } = await pairedBattle(t);
+    let finishTurn;
+    host.w.__runLockedPvPTurnResolution = async () => {
+        await new Promise(resolve => { finishTurn = resolve; });
+        hostState.isOver = true;
+        hostState.pActive.currentHp = 0;
+    };
+    t.after(() => finishTurn?.());
+    await sendBothActions();
+    guest.w.onOnlineRoomData = () => {};
+    await until(() => finishTurn, 'the host entered turn resolution');
+    assert.ok(host.OB.isSettlingTurn());
+    assert.equal(await guest.OB.requestDeparture(), true);
+    await until(() => host.OB.getDeparture(), 'the host receives the surrender during resolution');
+    finishTurn();
+    await until(() => !host.OB.isSettlingTurn(), 'the pending resolution unwinds');
+    assert.equal(server.row.data.battle.resolved_turn, 0);
+    assert.deepEqual([server.row.data.p1_wins, server.row.data.p2_wins], [1, 0]);
+    assert.equal(server.reports, 0);
+});
 
 test('two players recover an unpublished host turn through normal room reconnect', async t => {
     const { host, guest, hostState, guestState, server, sendBothActions, hostChannel } = await pairedBattle(t);

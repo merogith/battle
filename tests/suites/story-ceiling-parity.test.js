@@ -82,7 +82,8 @@ test('Cable Link rebuilds can learn and equip what is available in town', async 
   const rows = ST.STORY_EVENTS_RAW;
   const city = 2;
   Object.assign(ST.sm, { active: true, badges: 1, runSeed: 129, eventIndex: rows.findIndex(row => row[2] === 'City2') });
-  const rebuilt = await ST.storyMakePlayerLinkBuild('Garchomp', 'TOURNAMENT');
+  const rebuilt = ST.storyMakePlayerLinkBuild('Garchomp', 'TOURNAMENT', city);
+  await ST.storyFilterBuildMovesForCity(rebuilt, 'Garchomp', city, false);
   const allowed = await ST.tutorGetStagedMovePool('Garchomp', []);
   assert.ok(rebuilt.m.every(move => allowed.includes(move)), rebuilt.m.join(', '));
   assert.equal(rebuilt.a, 'Sand Veil');

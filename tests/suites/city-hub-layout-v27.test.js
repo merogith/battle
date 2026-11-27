@@ -76,16 +76,13 @@ test('every City row renders the same buttons/onclicks as the golden snapshot', 
 });
 
 // ── Identity band ────────────────────────────────────────────────────────────
-test('identity band mirrors the town name and badge pips', () => {
+test('the town vista shows the resolved town name', () => {
   const { i } = cityRows()[1];
   setSm(i);
   W.__renderCityActionsForTest(i);
   const name = W.document.getElementById('story-city-identity-name');
   assert.ok(name && name.textContent.trim().length > 0, 'band shows a town name');
-  const pips = W.document.querySelectorAll('#story-city-identity-badges .story-city-badge-pip');
-  assert.equal(pips.length, 8, 'eight badge pips');
-  const earned = W.document.querySelectorAll('#story-city-identity-badges .story-city-badge-pip.earned');
-  assert.equal(earned.length, 3, 'earned pips match sm.badges');
+
 });
 
 test('shared action styling remains available to the casino', () => {

@@ -23,23 +23,28 @@ async function stage(kind) {
     const story = window.__storyTest;
     settings.animations = false;
     settings.battleSpeed = 'instant';
-    const row = story.STORY_EVENTS_RAW.findIndex(event => event[1] === 'Battle' && event[2] === 'Gym Leader 8');
+    const mystery = kind === 'mystery';
+    const row = story.STORY_EVENTS_RAW.findIndex(event => event[0] === (mystery ? 55 : 53));
     const rowId = story.STORY_EVENTS_RAW[row][0];
-    const team = kind === 'pivot' ? [
+    const pivot = kind !== 'knockout';
+    const team = pivot ? [
       { id: 'scizor', name: 'Scizor', build: { a: 'Technician', n: 'Jolly', m: ['U-turn'] } },
       { id: 'pikachu', name: 'Pikachu', build: { a: 'Static', n: 'Hardy', m: ['Thunderbolt'] } },
     ] : [{ id: 'magnezone', name: 'Magnezone', build: { a: 'Sturdy', n: 'Modest', m: ['Thunderbolt'], evs: { spa: 252, spe: 252 } } }];
-    const foes = kind === 'pivot'
+    const foes = pivot
       ? [{ name: 'Blissey', build: { a: 'Natural Cure', m: ['Seismic Toss'] } }]
       : [{ name: 'Magikarp', build: { a: 'Swift Swim', m: ['Splash'] } }];
     Object.assign(story.sm, {
-      active: true, badges: 7, runSeed: 50841, eventIndex: row, adventureRunId: `resume-${kind}`,
+      active: true, badges: mystery ? 8 : 7, runSeed: 50841, eventIndex: row, adventureRunId: `resume-${kind}`,
       trainerProfile: { name: 'Field Tester', sprite: 'Red.png' }, currentTrainerData: { name: 'Gym Leader' },
       storyDifficulty: 'normal', gold: 4000, inventory: { potion: 2 }, team, pcBox: [],
       settings: { ...story.sm.settings, enabledGens: [1, 2, 3, 4], classicMode: true },
-      currentEnemyLock: { eventIdx: row, team: foes },
+      currentEnemyLock: mystery ? null : { eventIdx: row, team: foes },
+      mfEncounter1: mystery ? 'declined' : null,
+      mfFirstTeamLock: mystery ? foes : null,
     });
-    await story.launchBattle(foes, rowId);
+    if (mystery) story.mfFirstLaunchFight();
+    else await story.launchBattle(foes, rowId);
     // Hold presentation so closing the page interrupts the accepted action before the UI settles.
     window.presentNativeBattleEvents = () => new Promise(() => {});
   }, kind);
@@ -114,8 +119,25 @@ try {
   assert.equal((await save()).inventory.potion, 2);
   assert.equal((await save()).gold, 4000);
   assert.match(await page.locator('#battle-log').innerText(), /original items have been restored/);
-  assert.deepEqual(pageErrors, []);
   console.log('An incompatible simulator checkpoint restarted the original encounter with its items and gold intact.');
+
+  await page.evaluate(() => localStorage.clear());
+  await stage('mystery');
+  await choose('U-turn');
+  await page.waitForFunction(() => state.isLocked && state.nativeRequests?.[0]?.phase === 'replace' &&
+    JSON.parse(localStorage.getItem('pbs_story_save')).storyBattleCheckpoint?.resume?.simulation?.battle?.requestState === 'switch');
+  const mystery = await save();
+  assert.equal(mystery.storyBattleCheckpoint.kind, 'mystery-first');
+  await resume();
+  await party.waitFor({ state: 'visible' });
+  await page.waitForFunction(() => state.resumedStoryTurn && state.nativeRequests[0]?.phase === 'replace');
+  assert.deepEqual((await save()).mfFirstTeamLock, mystery.mfFirstTeamLock);
+  assert.equal((await save()).eventIndex, mystery.eventIndex);
+  await party.locator('.party-slot').filter({ hasText: 'Pikachu' }).getByRole('button', { name: 'Switch' }).click();
+  await page.waitForFunction(() => state.pActive.name === 'Pikachu' && !state.isLocked && state.turnNumber >= 1);
+  assert.match(await page.locator('#battle-log').innerText(), /Blissey used Seismic Toss/);
+  assert.deepEqual(pageErrors, []);
+  console.log('The optional Vespergate Mystery encounter resumed its exact replacement and retained the original town and roster.');
 } finally {
   await browser.close();
 }

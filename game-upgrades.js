@@ -3,10 +3,9 @@
   'use strict';
   const VERSION = global.document.querySelector('meta[name="battle-version"]')?.content || 'Unknown';
   const RULESET = 'story-singles-2026-09';
-  const SAVE = 'pbs_story_save';
+  const { storyKey: SAVE, settingsKey: SETTINGS, accessibilityKey: PREFS } = global.GameStorage;
   const META = 'pbs_story_meta';
-  const PREFS = 'pbs_accessibility';
-  const SETTINGS = 'pbs_settings';
+  const RESTORE_JOURNAL = 'pbs_restore_pending';
   const SLOT_KEYS = ['pbs_slot_1', 'pbs_slot_2', 'pbs_slot_3'];
   const KEYS = [SAVE, META, SETTINGS, PREFS];
   const PORTABLE_KEYS = [...KEYS, ...SLOT_KEYS];
@@ -28,8 +27,11 @@
     ['center','Pokémon Center','Manage your party and PC'],
     ['stoneShop','Stones and Beyond','Buy evolution items'],
     ['link','Cable Link','Trade or rebuild a partner'],
-    ['colress','Colress','Unlock battle forms'],
+    ['colress','Colress','Assign a battle form'],
     ['mart','Pokémart','Buy balls and battle supplies'],
+    ['dept','Department Store','Buy balls and rare gear'],
+    ['relic','Relics','Change battle rules'],
+    ['casino','Poké Game Corner','Play coin flip, slots or roulette'],
     ['safari','Safari Zone','Catch wild Pokémon'],
     ['daycare','Daycare Inn','Visit the matron about Eggs'],
   ];
@@ -160,14 +162,12 @@
       }
       append(p,append(shortcuts,button('Practice a battle concept',openPractice)));
       const available = new Set(s.availableFacilities);
-      const guide = append(element('details'), element('summary', 'Services in this town'));
+      const guide = append(element('details'), element('summary', s.inCrucible ? 'Services at the Crucible' : 'Services in this town'));
       const list=element('ul',null,'upgrade-notebook-services');
       for (const [key,name,description] of SERVICES) {
-        const localKey = key === 'mart' && available.has('dept') ? 'dept' : key;
-        if (!available.has(localKey)) continue;
-        const localName = localKey === 'dept' ? 'Department Store' : name;
-        const visit = button(localName,()=>{ close(); api().visit(localKey); });
-        visit.setAttribute('aria-label', `Visit ${localName}`);
+        if (!available.has(key)) continue;
+        const visit = button(name,()=>{ close(); api().visit(key); });
+        visit.setAttribute('aria-label', `Visit ${name}`);
         list.appendChild(append(element('li'),visit,element('span',description)));
       }
       if (list.children.length) append(p,append(guide,list));
@@ -371,7 +371,7 @@
   }
 
   function validateRun(run) {
-    if(!run || !Number.isInteger(run.version) || run.version<2 || run.version>(api()?.saveVersion || 28) || !Array.isArray(run.team)) throw new Error('This run is missing required data or uses a newer save version.');
+    if(!run || !Number.isInteger(run.version) || run.version<2 || run.version>global.GameStorage.storyVersion || !Array.isArray(run.team)) throw new Error('This run is missing required data or uses a newer save version.');
     if(!Number.isFinite(run.gold) || run.gold<0 || !Number.isInteger(run.badges) || run.badges<0 || run.badges>8) throw new Error('This run contains invalid progress values.');
     if(run.team.length>6 || (run.pcBox!==undefined && !Array.isArray(run.pcBox))) throw new Error('This run contains an invalid party.');
     for(const mon of [...run.team,...(run.pcBox || [])]) {
@@ -441,47 +441,82 @@
     if (!Object.keys(entries).length) throw new Error('There is no game data to back up yet.');
     return {format:'battle-backup',version:1,game:VERSION,rules:RULESET,createdAt:new Date().toISOString(),entries};
   }
-  function restoreBackup(value) {
+  function restoreSnapshot(entries) {
+    const dependencies = new Set(Object.keys(entries));
+    if (dependencies.has(SAVE)) dependencies.add(META);
+    return {
+      stored: Object.fromEntries([...dependencies].map(key => [key, global.localStorage.getItem(key)])),
+      live: dependencies.has(SAVE) && global.StoryMode?.state.active && !global.__storyRestoreReady
+        ? JSON.stringify(global.StoryMode.state) : null,
+    };
+  }
+  class StaleRestoreReview extends Error {}
+  function checkRestoreSnapshot(reviewed, latest) {
+    if (reviewed.live !== latest.live || Object.keys(latest.stored).some(key => reviewed.stored[key] !== latest.stored[key])) {
+      throw new StaleRestoreReview('Your local data changed. Review the current comparison before restoring.');
+    }
+  }
+  function restoreBackup(value, reviewed = null) {
     const blocked = restoreBlockedReason();
     if (blocked) throw new Error(blocked);
     const b=validateBackup(value), previous={};
+    const latest = restoreSnapshot(b.entries);
+    if (reviewed) checkRestoreSnapshot(reviewed, latest);
     const entries={...b.entries};
+    const localMeta = global.GameStorage.parseRecord(latest.stored[META]);
     if (entries[SETTINGS]) {
-      const deviceDownload = read(SETTINGS)?.offlineDownload;
+      const deviceDownload = global.GameStorage.parseRecord(latest.stored[SETTINGS]).offlineDownload;
       entries[SETTINGS] = portableSettings(entries[SETTINGS]) || {};
       if (deviceDownload) entries[SETTINGS].offlineDownload = deviceDownload;
     }
     if(global.FrontierChallenges && entries[META]) {
       entries[META]={...entries[META],frontierChallengeRecords:global.FrontierChallenges.mergeRecords(
-        read(META)?.frontierChallengeRecords,entries[META].frontierChallengeRecords)};
+        localMeta.frontierChallengeRecords,entries[META].frontierChallengeRecords)};
     }
     const archive=global.AdventureProgress;
-    if(archive && entries[SAVE]) {
-      const current=archive.normalize(read(META)?.adventureArchive);
-      const run=entries[SAVE];
-      const recorded=Object.hasOwn(current.runs,run.adventureRunId) && current.runs[run.adventureRunId];
-      if(recorded && Number.isInteger(run.runSeed) && recorded.seed===(run.runSeed>>>0)) {
-        const merged=entries[META] ? archive.mergeArchives(current,entries[META].adventureArchive) : current;
-        entries[SAVE]={...run,storyChoices:archive.reconcileChoices(merged,run.adventureRunId,run.storyChoices)};
-        if(entries[META]) entries[META]={...entries[META],adventureArchive:merged};
+    if(archive && (entries[SAVE] || entries[META])) {
+      const current=archive.normalize(localMeta.adventureArchive);
+      const incoming=archive.normalize(entries[META]?.adventureArchive);
+      let run=entries[SAVE];
+      const hasIdentity = run && archive.isRunId(run.adventureRunId) && Number.isInteger(run.runSeed);
+      if (hasIdentity) {
+        const id = run.adventureRunId;
+        const seed = run.runSeed >>> 0;
+        if (current.runs[id] && current.runs[id].seed !== seed) {
+          const newId = archive.createRunId();
+          if (incoming.runs[id]?.seed === seed) {
+            incoming.runs[newId] = incoming.runs[id];
+            delete incoming.runs[id];
+          }
+          run = {...run, adventureRunId: newId};
+        }
       }
+      const merged = archive.mergeArchives(current,incoming);
+      if (hasIdentity) entries[SAVE] = {...run, storyChoices: archive.reconcileChoices(merged, run.adventureRunId, run.runSeed, run.storyChoices)};
+      if (entries[META]) entries[META]={...entries[META],adventureArchive:merged};
     }
-    for(const key of Object.keys(entries)) previous[key]=global.localStorage.getItem(key);
+    for(const key of Object.keys(entries)) previous[key]=latest.stored[key];
     // Keep a recovery journal until every write succeeds. Never include connection tokens.
+    if (global.localStorage.getItem(RESTORE_JOURNAL) !== null) {
+      throw new Error('An earlier restore needs recovery. Back up your data and reload before trying again.');
+    }
+    checkRestoreSnapshot(latest, restoreSnapshot(b.entries));
     try {
-      global.localStorage.setItem('pbs_restore_pending',JSON.stringify(previous));
+      global.localStorage.setItem(RESTORE_JOURNAL,JSON.stringify(previous));
     } catch (_) {
       throw new Error('Storage is unavailable or too full to start restoring safely. Your current saves are still here.');
     }
     try {
       for(const [key,data] of Object.entries(entries)) global.localStorage.setItem(key,JSON.stringify(data));
-      global.localStorage.removeItem('pbs_restore_pending');
+      global.localStorage.removeItem(RESTORE_JOURNAL);
     } catch(error) {
       let restored=true;
       for(const [key,data] of Object.entries(previous)) {
         try { if(data===null) global.localStorage.removeItem(key); else global.localStorage.setItem(key,data); } catch(_) { restored=false; }
       }
-      if(restored) global.localStorage.removeItem('pbs_restore_pending');
+      if(restored) {
+        try { global.localStorage.removeItem(RESTORE_JOURNAL); } catch (_) { /* The journal can still be replayed. */ }
+      }
       throw new Error('Restore could not complete. Your previous data was retained for recovery.');
     }
     global.__storyRestoreReady=true;
@@ -518,10 +553,11 @@
     for (const [term, description] of fields) append(list, element('dt', term), element('dd', description));
     return append(card(title), list);
   }
-  function reviewRestore(value, source, onInvalid) {
-    let backup;
+  function reviewRestore(value, source, {onInvalid, onCancel = close, message} = {}) {
+    let backup, reviewed;
     try {
       backup = validateBackup(value);
+      reviewed = restoreSnapshot(backup.entries);
     } catch (error) {
       if (onInvalid) onInvalid(error.message);
       else {
@@ -530,20 +566,23 @@
       }
       return;
     }
-    const current = currentRun();
+    const current = global.__storyExternalSave ? read(SAVE) : currentRun();
     const scopes = Object.keys(backup.entries);
     const replaced = scopes.filter(key => key === SAVE ? current : read(key) !== null);
     const p = open('Review restoration');
+    dismiss = onCancel;
     p.classList.add('upgrade-dialog--restore');
     const body = element('div', null, 'upgrade-restore-body');
     body.tabIndex = 0;
     body.setAttribute('role', 'region');
     body.setAttribute('aria-label', 'Backup comparison');
-    const details = element('div', null, 'upgrade-grid');
-    append(details, runSummary('Incoming backup', backup.entries[SAVE], backup.createdAt, 'No Story run in this file.'), runSummary('On this device', current));
+    const details = backup.entries[SAVE] ? append(element('div', null, 'upgrade-grid'),
+      runSummary('Incoming backup', backup.entries[SAVE], backup.createdAt), runSummary('On this device', current)) : null;
     const contents = element('ul', null, 'upgrade-scope');
     for (const key of scopes) append(contents, element('li', BACKUP_CONTENTS[key]));
-    append(body, element('p', source, 'upgrade-muted'));
+    const conflict = message ? element('p', message, 'upgrade-feedback upgrade-error') : null;
+    conflict?.setAttribute('role', 'status');
+    append(body, element('p', source, 'upgrade-muted'), conflict);
     if (replaced.length) {
       append(body, element('p', `Restoring will replace your ${replaced.map(key => BACKUP_CONTENTS[key]).join(', ')}.`, 'upgrade-feedback upgrade-error'));
     } else if (backup.entries[SAVE]) {
@@ -556,11 +595,15 @@
     const actions = element('div', null, 'upgrade-actions upgrade-restore-actions');
     const restore = button('Restore this backup', () => {
       try {
-        restoreBackup(backup);
+        restoreBackup(backup, reviewed);
         result.hidden = false;
         result.textContent = 'Restored successfully. Reloading your journey…';
         global.location.reload();
       } catch (error) {
+        if (error instanceof StaleRestoreReview) {
+          reviewRestore(backup, source, {onInvalid, onCancel, message: error.message});
+          return;
+        }
         result.hidden = false;
         result.classList.add('upgrade-error');
         result.textContent = error.message;
@@ -573,9 +616,9 @@
       restore.disabled = true;
       append(body, element('p', blocked, 'upgrade-feedback'));
     }
-    const backUp = current ? button('Back up current progress', exportBackup) : null;
+    const backUp = current && backup.entries[SAVE] ? button('Back up current progress', exportBackup) : null;
     if (backUp) backUp.classList.add('upgrade-restore-export');
-    append(actions, backUp, button('Cancel', close), restore);
+    append(actions, backUp, button('Cancel', onCancel), restore);
     append(body, result);
     append(p, body, actions);
   }
@@ -613,7 +656,10 @@
         if (request === selection && input.isConnected) showError('Could not read this file. Choose a Pokémon Arena JSON backup.');
         return;
       }
-      if (request === selection && input.isConnected) reviewRestore(value, file.name, showError);
+      if (request === selection && input.isConnected) reviewRestore(value, file.name, {
+        onInvalid: showError,
+        onCancel: () => openData().querySelector('#upgrade-backup-file')?.focus(),
+      });
     });
     return append(field, label, input, error);
   }
@@ -623,9 +669,16 @@
     const stored = read(SAVE);
     const current = currentRun(stored);
     const lastSave = displayDate(stored?._lastSave) || displayDate(current?._lastSave);
-    const status = global.__storySaveError || (lastSave ? `Last saved ${lastSave}`
+    const saveStatus = global.GameStorage.readStory().status;
+    const saveProblem = global.GameStorage.storyProblem(saveStatus);
+    const status = global.__storySaveError || saveProblem || (lastSave ? `Last saved ${lastSave}`
       : current ? 'Story run saved on this device.' : 'No Story run on this device.');
-    append(p, element('p', status, global.__storySaveError ? 'upgrade-feedback upgrade-error' : null));
+    append(p, element('p', status, global.__storySaveError || saveProblem ? 'upgrade-feedback upgrade-error' : null));
+    if (saveStatus === 'newer') {
+      const title = element('a', 'Check for updates from the title');
+      title.href = 'index.html';
+      append(p, title);
+    }
     const hasProgress = current || read(META) || SLOT_KEYS.some(key => read(key));
     const hasBackup = hasProgress || portableSettings(read(SETTINGS)) || read(PREFS);
     const backup = element('div', null, 'upgrade-backup');
@@ -656,28 +709,42 @@
       const run=read(key); if(run)append(checkpoints,button(`Review ${labelText.toLowerCase()}`,()=>reviewRestore(run,labelText)));
     }
     if (checkpoints.childElementCount) append(p,element('h3','Automatic checkpoints'),checkpoints);
+    return p;
   }
 
   function applyPreferences() {
-    const prefs=read(PREFS,{});
-    document.body.classList.toggle('upgrade-readable',!!prefs.readable);
-    document.body.classList.toggle('upgrade-large-text',!!prefs.largeText);
-    document.body.classList.toggle('upgrade-reduced-motion',!!prefs.reducedMotion);
-    global.__accessibleCamp=!!prefs.camp;
-    global.__reduceGameMotion=!!prefs.reducedMotion;
+    const prefs=global.GameStorage.readRecord(PREFS);
+    document.body.classList.toggle('upgrade-readable',prefs.readable === true);
+    document.body.classList.toggle('upgrade-large-text',prefs.largeText === true);
+    document.body.classList.toggle('upgrade-reduced-motion',prefs.reducedMotion === true);
+    global.__accessibleCamp=prefs.camp === true;
+    global.__reduceGameMotion=prefs.reducedMotion === true;
     global.refreshReducedMotionSettings?.();
+    for (const input of panel?.querySelectorAll('[data-upgrade-preference]') || []) {
+      input.checked = prefs[input.dataset.upgradePreference] === true;
+    }
   }
   function openPreferences() {
-    const p=open('Reading & accessibility'), prefs=read(PREFS,{});
+    const p=open('Reading & accessibility');
     p.classList.add('upgrade-dialog--preferences');
+    const feedback = element('p', null, 'upgrade-feedback upgrade-error');
+    feedback.setAttribute('role', 'status');
+    feedback.hidden = true;
     for(const [key,labelText,hint] of [
       ['readable','Use a readable interface font'],
       ['largeText','Larger Notebook and story text'],
       ['reducedMotion','Reduce interface motion'],
       ['camp','Use untimed camp activities','The rewards stay the same.'],
     ]) {
-      const label=element('label',null,'upgrade-preference'), input=element('input');input.type='checkbox';input.checked=!!prefs[key];
-      input.addEventListener('change',()=>{prefs[key]=input.checked;try{global.localStorage.setItem(PREFS,JSON.stringify(prefs));applyPreferences();}catch(e){notice('This preference could not be saved.');}});
+      const label=element('label',null,'upgrade-preference'), input=element('input');
+      input.type='checkbox';
+      input.dataset.upgradePreference = key;
+      input.addEventListener('change',()=>{
+        const saved = global.GameStorage.updateRecord(PREFS, { [key]: input.checked });
+        applyPreferences();
+        feedback.hidden = saved;
+        feedback.textContent = saved ? '' : 'This preference could not be saved.';
+      });
       const caption=element('span',labelText);
       if (hint) {
         input.setAttribute('aria-label', labelText);
@@ -687,6 +754,8 @@
       }
       append(p,append(label,input,caption));
     }
+    append(p,feedback);
+    applyPreferences();
   }
   function saveResult(ok) {
     const existing=document.getElementById('upgrade-save-alert');
@@ -710,9 +779,18 @@
       }
       return;
     }
-    if(existing) {existing.querySelector('p').textContent=global.__storySaveError || 'Progress could not be saved. Keep this page open and back up your current progress.';return;}
-    const alert=element('aside',null,'upgrade-save-alert');alert.id='upgrade-save-alert';alert.setAttribute('role','alert');
-    append(alert,element('p',global.__storySaveError || 'Progress could not be saved. Keep this page open and back up your current progress.'),button('Back up now',exportBackup),button('Retry',()=>api() && api().save()));document.body.appendChild(alert);
+    const summary = document.querySelector('#modal-summary:not(.hidden):not([inert]) #summary-pages-scroll');
+    const host = summary || document.body;
+    const alert = existing || element('aside', null, 'upgrade-save-alert');
+    if (!existing) {
+      alert.id = 'upgrade-save-alert';
+      alert.setAttribute('role', 'alert');
+      append(alert, element('p'), button('Back up now', exportBackup), button('Retry', () => api() && api().save()));
+    }
+    alert.querySelector('p').textContent = global.__storySaveError
+      || 'Progress could not be saved. Keep this page open and back up your current progress.';
+    alert.classList.toggle('upgrade-save-alert--inline', Boolean(summary));
+    if (alert.parentElement !== host) host.prepend(alert);
   }
   function runPassport() {
     const s=api().snapshot();
@@ -747,6 +825,7 @@
     exportBackup,reviewBrokenBackup,makeBackup,validateBackup,restoreBackup,runPassport,analyzeTeam,close,
     observeBattle,normalizeBattleObservation,describeBattleObservation,VERSION,RULESET};
   global.addEventListener('storage',event=>{
+    if (event.key === PREFS || event.key === null) applyPreferences();
     if(event.key===SAVE && event.oldValue!==event.newValue && global.StoryMode?.state.active) {
       global.__storyExternalSave=true;
       global.__storySaveError='Another game tab changed this save. Back up this session, then reload to load the other tab’s progress.';
@@ -754,13 +833,13 @@
     }
   });
   // An interrupted multi-key import is rolled back before the player continues.
-  const pending=read('pbs_restore_pending');
+  const pending=read(RESTORE_JOURNAL);
   if(pending && typeof pending==='object') {
     try {
       for(const [key,value] of Object.entries(pending)) if(PORTABLE_KEYS.includes(key)) {
         if(value===null)global.localStorage.removeItem(key);else if(typeof value==='string')global.localStorage.setItem(key,value);
       }
-      global.localStorage.removeItem('pbs_restore_pending');
+      global.localStorage.removeItem(RESTORE_JOURNAL);
     } catch(_) { global.__storySaveError='An interrupted restore needs recovery. Back up your data before continuing.'; }
   }
   applyPreferences();

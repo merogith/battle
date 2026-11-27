@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Dex } from '@pkmn/dex';
-import { loadEngine } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine } from '../helpers/load-engine.js';
 
 const { window: W } = await loadEngine();
+installWritableStorage(W);
 const Story = W.StoryMode;
 const ST = W.__storyTest;
 const gens = [1, 2, 3, 4, 5, 6, 7, 8, 9];

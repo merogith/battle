@@ -4,11 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#11151c">
-    <meta name="battle-version" content="2.0.5">
+    <meta name="battle-version" content="2.0.6">
     <title>Pokémon Arena</title>
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="icons/app-icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <script src="data/game-storage.js"></script>
     <script src="game-update.js" defer></script>
     <style>
         :root { color-scheme: dark; background: #11151c; }
@@ -20,12 +21,16 @@
 <body class="home-screen">
     <main class="home-menu">
         <h1>Pokémon <span>Arena</span></h1>
-        <p class="game-version">Version 2.0.5</p>
+        <p class="game-version">Version 2.0.6</p>
         <nav class="home-actions" aria-label="Story">
             <a class="home-choice home-primary" id="title-continue" href="battle.html?entry=continue" hidden>
                 Continue <small id="title-save"></small>
             </a>
             <a class="home-choice home-primary" id="title-story" href="battle.html?entry=story">Story Mode</a>
+            <div id="title-save-recovery" hidden>
+                <p class="home-status" id="title-save-issue" role="status"></p>
+                <a class="home-tool" href="battle.html?entry=recovery">Save &amp; recovery</a>
+            </div>
         </nav>
         <details class="home-battles home-disclosure" id="menu-more-play">
             <summary id="menu-more-play-summary">Battles</summary>
@@ -56,10 +61,12 @@
     </main>
     <script>
         function showSave() {
-            let run;
-            try { run = JSON.parse(localStorage.getItem('pbs_story_save')); } catch (_) {}
-            const resumable = run?.active === true && Array.isArray(run.team);
+            const { status, run } = GameStorage.readStory();
+            const resumable = status === 'ready';
+            const problem = GameStorage.storyProblem(status);
             document.getElementById('title-continue').hidden = !resumable;
+            document.getElementById('title-save-issue').textContent = problem;
+            document.getElementById('title-save-recovery').hidden = !problem;
             document.getElementById('title-story').classList.toggle('home-primary', !resumable);
             if (resumable) {
                 const name = run.trainerProfile?.name || 'Trainer';
@@ -72,7 +79,7 @@
         }
         showSave();
         window.addEventListener('pageshow', showSave);
-        window.addEventListener('storage', event => { if (event.key === 'pbs_story_save') showSave(); });
+        window.addEventListener('storage', event => { if (event.key === GameStorage.storyKey || event.key === null) showSave(); });
         // Preserve older invitation and diagnostic URLs on the site root.
         if (location.search || location.hash) location.replace('battle.html' + location.search + location.hash);
         if ('serviceWorker' in navigator) {
@@ -97,7 +104,7 @@
                 status.textContent = 'Checking for updates…';
                 try {
                     const result = await window.checkForGameUpdate(() => { status.textContent = 'Installing the game update…'; });
-                    if (result === true || result === null) reloadTitle();
+                    if (result === true) reloadTitle();
                     else if (result === 'applying') status.textContent = 'Applying the verified update…';
                     else if (result === 'waiting') status.textContent = 'Update ready. Finish your current action or close other game tabs.';
                     else status.textContent = 'The game is up to date.';

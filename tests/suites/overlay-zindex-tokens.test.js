@@ -33,6 +33,7 @@ const HTML = fs.readFileSync(
   'utf8'
 );
 const UPGRADES_CSS = fs.readFileSync(new URL('../../game-upgrades.css', import.meta.url), 'utf8');
+const WORLD_CSS = fs.readFileSync(new URL('../../world-location.css', import.meta.url), 'utf8');
 
 const TIERS = {
   'scrim': 1200,
@@ -69,7 +70,6 @@ const MIGRATED = [
   ['z-index: var(--sn-z-toast);', 'z-index: 15000;', '#toast-host container'],
   ['z-index: var(--sn-z-battle-banner);', null, '.gimmick-banner'],
   // overlay tier — formerly off-scale (z10000 / z9990), folded onto the scale here
-  ['background:rgba(0,0,0,0.93);z-index:var(--sn-z-overlay);display:flex;align-items:safe center;justify-content:safe center;padding:20px;overflow-y:auto;', 'rgba(0,0,0,0.93);z-index:10000', '_storyScene engine (was z10000)'],
   // spotlight tier (9999)
   // First-sighting lore now appears inside the Pokédex rather than an overlay.
   ['background:rgba(0,0,0,0.92);z-index:var(--sn-z-spotlight);display:flex;flex-direction:column;align-items:center;gap:16px;', null, 'showBattleIntro'],
@@ -81,6 +81,8 @@ test('every migrated story overlay references its --sn-z-* token', () => {
     assert.ok(HTML.includes(present), `${label}: expected token fragment is present`);
   }
   assert.match(HTML, /\.story-boss-announcements\s*\{[^}]*z-index:\s*var\(--sn-z-spotlight\)/);
+  assert.match(HTML, /ov\.className = 'story-side-scene'/);
+  assert.match(WORLD_CSS, /\.story-side-scene\s*\{[^}]*z-index:\s*var\(--sn-z-overlay\)/);
 });
 
 test('no migrated story overlay still carries its old z-index literal', () => {

@@ -1,5 +1,5 @@
 // Scene presentation (P3) — guards for the upgraded scene/narration layer:
-//   • _storyScene's new optional fields (backdropCss / backdropScene / cast /
+//   • _storyScene's optional fields (backdrop / backdropScene / cast /
 //     fx) render, and their ABSENCE renders the legacy card unchanged (flat
 //     black overlay, no cast row) with the options flow intact,
 //   • the camp menu is a full night scene (sky gradient + fire glow + lead +
@@ -12,6 +12,7 @@
 //   node --test tests/suites/scene-presentation-v27.test.js
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { loadEngine } from '../helpers/load-engine.js';
 
 let E, W, ST, SER, doc;
@@ -73,7 +74,7 @@ test('cast sprites, manifest backdrop, and fx classes render when declared', () 
   assert.ok(cast, 'cast row rendered');
   assert.ok(cast.classList.contains('scene-fx-fire'), 'fx class on the cast');
   assert.equal(cast.querySelectorAll('img.story-scene-cast-img').length, 2, 'both cast sprites');
-  assert.match(ov.style.background, /gen3-forest\.png/, 'manifest scene image behind a gradient');
+  assert.match(ov.querySelector('.world-scene-plate').getAttribute('src'), /gen3-forest\.png/, 'manifest scene image behind a gradient');
   clear('scene-test-2');
 });
 
@@ -84,10 +85,29 @@ test('backdrop resets between beats (reused element cannot leak a scene)', () =>
     { title: 'B', html: 'b' },
   ], null, 'scene-test-3');
   const ov = doc.getElementById('scene-test-3');
-  assert.match(ov.style.background, /gen3-cave\.png/, 'beat 1 backdrop');
+  assert.match(ov.querySelector('.world-scene-plate').getAttribute('src'), /gen3-cave\.png/, 'beat 1 backdrop');
   ov.querySelector('[data-scene-cont="1"]').click();
   assert.equal(ov.style.background, 'rgba(0, 0, 0, 0.93)', 'beat 2 falls back to flat black');
+  assert.equal(ov.querySelector('.world-scene-plate'), null, 'old image is removed');
   ov.querySelector('[data-scene-cont="1"]').click(); // finish
+});
+
+test('activity art loads its fallback only after a primary error and settles without an image', () => {
+  freshSm();
+  W.eval(readFileSync(new URL('../../world-presentation.js', import.meta.url), 'utf8'));
+  const place = W.WorldPresentation.facility('daycare-inn');
+  ST.storyScene([{ title: 'Inn', backdrop: { place, color: '#161c1c', shade: 0.8 } }], null, 'scene-test-fallback');
+  const ov = doc.getElementById('scene-test-fallback');
+  const image = ov.querySelector('.world-scene-plate');
+  assert.equal(image.getAttribute('src'), place.background);
+  assert.equal(ov.querySelectorAll('.world-scene-plate').length, 1);
+  assert.doesNotMatch(ov.style.background, /url/);
+  image.dispatchEvent(new W.Event('error'));
+  assert.equal(image.getAttribute('src'), place.fallback);
+  image.dispatchEvent(new W.Event('error'));
+  assert.equal(image.getAttribute('src'), null);
+  assert.equal(image.onerror, null);
+  ov.querySelector('[data-scene-cont]').click();
 });
 
 // ── Camp: full night scene, labels unchanged ─────────────────────────────────

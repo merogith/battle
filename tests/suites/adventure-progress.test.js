@@ -64,7 +64,7 @@ test('an older same-run checkpoint restores earned secrets and first choices onl
         'adventure.chapter-2': 'act',
     });
     const old = Object.freeze({ 'adventure.chapter-1': 'act', 'road.discovery.1': 'scout' });
-    const fixed = adventure.reconcileChoices(archive, idA, old);
+    const fixed = adventure.reconcileChoices(archive, idA, -23, old);
     assert.deepEqual(fixed, {
         'adventure.chapter-1': 'listen',
         'adventure.secret.chapter-1': true,
@@ -72,8 +72,10 @@ test('an older same-run checkpoint restores earned secrets and first choices onl
         'road.discovery.1': 'scout',
     });
     assert.equal(old['adventure.chapter-1'], 'act');
-    assert.equal(adventure.reconcileChoices(archive, idB, old), old);
-    assert.equal(adventure.reconcileChoices(archive, idA, fixed), fixed);
+    assert.equal(adventure.reconcileChoices(archive, idB, -23, old), old);
+    assert.equal(adventure.reconcileChoices(archive, idA, 24, old), old);
+    assert.equal(adventure.reconcileChoices(archive, idA, null, old), old);
+    assert.equal(adventure.reconcileChoices(archive, idA, 4294967273, fixed), fixed);
 });
 
 test('a full archive merge preserves local claims after a rollback and joins disjoint progress', () => {

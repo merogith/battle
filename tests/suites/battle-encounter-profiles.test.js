@@ -74,8 +74,8 @@ test('presentation stays generic before a public branch and hides opponent, shel
 });
 
 test('all live faction and anomaly fights have authored entrance and win lines', () => {
-    const generated = readFileSync(new URL('../../scripts/build/story-scenes.generated.js', import.meta.url), 'utf8');
-    const scenes = runInNewContext(`${generated}\nSTORY_SCENES;`);
+    const sceneLiteral = battle.match(/^        const STORY_SCENES = (\{[\s\S]*?\n        \});/m)[1];
+    const scenes = runInNewContext(`(${sceneLiteral})`);
     const factions = Object.keys(scenes).filter(key => /^villain\.[^.]+\.(battle[12]|miniBoss|boss)$/.test(key));
     const anomalies = Object.keys(scenes).filter(key => /^extra\.[^.]+\.(miniRaid2?|raid)$/.test(key));
     assert.equal(factions.length, 40);

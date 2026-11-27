@@ -154,7 +154,8 @@ try {
     await screenshot(page, 'roaming-caught-phone');
     await page.getByRole('button', { name: 'View in Pokédex' }).click();
     await page.getByRole('heading', { name: 'Suicune', exact: true }).and(page.locator('#pdex-entry-title')).waitFor();
-    await page.locator('#screen-collection').getByRole('button', { name: 'Back', exact: true }).click();
+    await page.locator('#screen-collection').getByRole('button', { name: /Back to Catch/ }).click();
+    assert.equal(await page.getByRole('button', { name: 'View in Pokédex' }).evaluate(node => node === document.activeElement), true);
     await page.locator('[data-catch-continue]').click();
     assert.equal((await saved(page)).receipt, null);
   });

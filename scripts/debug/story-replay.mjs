@@ -1,126 +1,134 @@
 #!/usr/bin/env node
-// Deterministic story-mode replay harness.
-//
-// Drives the engine's story-mode globals through a small fixed itinerary using
-// the seeded RNG. Captures state snapshots after each event and writes a JSON
-// trace. Diffing two traces from the same seed must produce zero diffs — that's
-// the determinism guarantee. If they differ, an unsynced Math.random() is in
-// the story path.
-
-import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const REPO = resolve(__dirname, '..', '..');
-
-async function load() {
-  const mod = await import(join(REPO, 'tests', 'helpers', 'load-engine.js'));
-  return mod.loadEngine();
-}
+// Compare meaningful, committed Story states from the same seeded actions.
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { installWritableStorage, loadEngine } from '../../tests/helpers/load-engine.js';
 
 function snapshot(window) {
-  const sm = window.sm || {};
+  const run = window.StoryMode.state;
   return {
-    eventIndex: sm.eventIndex ?? null,
-    badges: sm.badges ?? null,
-    rivalWins: sm.rivalWins ?? null,
-    rivalLosses: sm.rivalLosses ?? null,
-    rivalChampionClaimed: !!sm.rivalChampionClaimed,
-    teamSpecies: Array.isArray(sm.team) ? sm.team.map(p => p?.species || p?.name || null) : null,
-    pcSize: Array.isArray(sm.pcBox) ? sm.pcBox.length : null,
-    balls: sm.balls ? { ...sm.balls } : null,
-    catchTutorialDone: !!sm.catchTutorialDone,
-    unlockedGimmicks: sm.unlockedGimmicks ? [...sm.unlockedGimmicks].sort() : null,
-    runSeed: sm.runSeed ?? null,
-    rngState: sm._strngState ?? null,
+    eventIndex: run.eventIndex,
+    badges: run.badges,
+    gold: run.gold,
+    team: run.team.map(slot => ({
+      name: slot.name, id: slot.id, starter: slot.starter, moves: [...slot.build.m],
+      ivs: { ...slot.build.ivs }, ability: slot.build.a,
+    })),
+    inventory: { ...run.inventory },
+    tracks: { ...run.tracks },
+    choices: { ...run.storyChoices },
+    rng: run._strngState,
   };
 }
 
-async function runReplay(seed = 12345) {
-  const harness = await load();
-  const { window, seedRng } = harness;
-  seedRng(seed);
+async function runReplay(seed) {
+  assert.ok(Number.isSafeInteger(seed) && seed > 0 && seed < 2 ** 31, 'Use a positive 31-bit seed');
+  const { window, engine, reset, logs, seedRng } = await loadEngine();
+  const story = window.StoryMode;
+  const hooks = window.__storyTest;
+  assert.ok(story && hooks, 'Story initialized in the harness');
+  installWritableStorage(window);
+  seedRng(0);
+  reset();
+  window.showScreen('screen-menu');
 
-  const trace = { seed, generatedAt: new Date().toISOString(), snapshots: [] };
+  const snapshots = [];
+  const capture = (label, extra) => snapshots.push({ label, ...snapshot(window), ...extra });
+  story.state._trainerProfilePending = { seed, name: 'Replay Trainer', difficulty: 'normal' };
+  story.startNewRun();
+  assert.equal(story.state.runSeed, seed);
+  assert.ok(story.state.active && story.state.tracks.villain && story.state.tracks.extra);
+  capture('Pallet opening');
 
-  // Check whether the story-mode globals are even reachable. They should be —
-  // the engine boots story-mode IIFEs at load.
-  if (!window.sm && typeof window.newStoryRun !== 'function' && !window.StoryMode) {
-    trace.error = 'sm global and newStoryRun not exposed by engine — story-mode replay path needs an exposed entry point';
-    return trace;
+  await story.enterProfessor();
+  const choices = [...window.document.querySelectorAll('#story-prof-rolled-card .prof-pick-choice')];
+  assert.ok(choices.length >= 2, 'The Professor must offer a choice');
+  capture('Starter offers', { offers: choices.map(choice => ({
+    name: choice.querySelector('strong').textContent,
+    moves: [...choice.querySelectorAll('[data-prof-move]')].map(move => move.dataset.profMove),
+  })) });
+  story.profSelectChoice(0);
+  await story.profAccept();
+  assert.ok(story.state.team[0]?.starter && story.state.profUsed[0]);
+  capture('Starter accepted');
+
+  story.enterShop('mart');
+  const potion = window.POKEMART_ITEMS.find(item => item.id === 'potion');
+  assert.ok(potion, 'Pallet Mart offers a Potion');
+  const gold = story.state.gold;
+  const stock = story.state.inventory.potion | 0;
+  await story.buyItem(potion.id, potion.price);
+  assert.equal(story.state.gold, gold - potion.price);
+  assert.equal(story.state.inventory.potion, stock + 1);
+  capture('Potion purchased', { price: potion.price });
+
+  const saved = JSON.parse(window.localStorage.getItem('pbs_story_save'));
+  const beforeContinue = snapshot(window);
+  await story.continueRun();
+  assert.equal(story.state.inventory.potion, saved.inventory.potion);
+  assert.equal(story.state.gold, saved.gold);
+  assert.deepEqual(snapshot(window).team, beforeContinue.team);
+  capture('Continued saved run');
+
+  // Fixed opponent isolates the encounter RNG after testing variable starter offers.
+  const row = hooks.STORY_EVENTS_RAW.findIndex(candidate => candidate[0] === 1);
+  assert.ok(row >= 0);
+  story.state.eventIndex = row;
+  async function firstTurn() {
+    reset();
+    await hooks.launchBattle([{ name: 'Eevee', build: { m: ['Tackle'], n: 'Hardy', a: 'None', _isShiny: false } }], 1);
+    assert.equal(engine.state.mode, 'story');
+    const player = engine.state.pActive;
+    const slot = Math.max(0, player.moves.findIndex(move => move.category !== 'Status'));
+    const pp = player.moves[slot].pp;
+    logs.length = 0;
+    await window.playTurn(slot, null);
+    assert.ok(logs.length && player.moves[slot].pp < pp, 'A move was committed');
+    return {
+      foe: engine.state.fActive.name,
+      hp: [player.currentHp, engine.state.fActive.currentHp],
+      pp: [player.moves[slot].pp, engine.state.fActive.moves[0].pp],
+      cursor: engine.state.storyBattleRng?.cursor ?? null,
+    };
   }
-
-  trace.snapshots.push({ label: 'boot', state: snapshot(window) });
-
-  // The engine doesn't fully expose a programmatic story-run kickoff (the UI
-  // pipeline is browser-only). The most we can do without modifying the engine
-  // is snapshot a few states by calling exposed helpers. Real replay coverage
-  // belongs in tests/integration/story-flow.test.js where we can stand up the
-  // sm object directly and drive proceedToNextBattle.
-
-  if (typeof window.newStoryRun === 'function') {
-    try {
-      window.newStoryRun({ rivalName: 'Test', startingGen: 8 });
-      trace.snapshots.push({ label: 'after-newStoryRun', state: snapshot(window) });
-    } catch (e) {
-      trace.snapshots.push({ label: 'newStoryRun-error', error: String(e?.message || e) });
-    }
-  }
-
-  return trace;
-}
-
-function diffTraces(a, b) {
-  const diffs = [];
-  if (a.seed !== b.seed) diffs.push({ field: 'seed', a: a.seed, b: b.seed });
-  const ns = Math.max(a.snapshots.length, b.snapshots.length);
-  for (let i = 0; i < ns; i++) {
-    const sa = a.snapshots[i]; const sb = b.snapshots[i];
-    if (!sa || !sb) { diffs.push({ at: i, missing: !sa ? 'a' : 'b' }); continue; }
-    if (sa.label !== sb.label) diffs.push({ at: i, field: 'label', a: sa.label, b: sb.label });
-    const ja = JSON.stringify(sa.state || {}); const jb = JSON.stringify(sb.state || {});
-    if (ja !== jb) diffs.push({ at: i, label: sa.label, field: 'state', a: sa.state, b: sb.state });
-  }
-  return diffs;
+  const turn = await firstTurn();
+  capture('First battle turn', { turn });
+  story.onBattleEnd(false, 'Defeat', '');
+  const retry = await firstTurn();
+  assert.deepEqual(retry, turn, 'A rematch restarts this encounter’s combat stream');
+  capture('First battle turn replayed', { turn: retry });
+  return { seed, snapshots };
 }
 
 async function main() {
-  const args = process.argv.slice(2);
-  const cmd = args[0] || 'capture';
-
-  const reportsDir = join(REPO, 'tests', 'reports');
-  if (!existsSync(reportsDir)) mkdirSync(reportsDir, { recursive: true });
-  const tracePath = join(reportsDir, 'story-replay-trace.json');
-
-  if (cmd === 'capture') {
-    const seed = Number(args[1] ?? 12345);
-    const t = await runReplay(seed);
-    writeFileSync(tracePath, JSON.stringify(t, null, 2));
-    process.stderr.write(`[story-replay] captured ${t.snapshots.length} snapshots (seed=${seed}) → ${tracePath}\n`);
-    if (t.error) process.stderr.write(`[story-replay] WARN: ${t.error}\n`);
-  } else if (cmd === 'diff') {
-    const seed = Number(args[1] ?? 12345);
-    const a = await runReplay(seed);
-    const b = await runReplay(seed);
-    const diffs = diffTraces(a, b);
-    if (diffs.length === 0) {
-      console.log('[story-replay] DETERMINISTIC ✅ — same seed produced identical trace');
-    } else {
-      console.log('[story-replay] DRIFT DETECTED ⚠️');
-      console.log(JSON.stringify(diffs, null, 2));
-      process.exit(1);
-    }
-  } else {
-    console.error('usage: story-replay.mjs [capture|diff] [seed]');
-    process.exit(2);
+  const [, , command = 'capture', seedArg = '12345'] = process.argv;
+  const seed = Number(seedArg);
+  switch (command) {
+  case 'capture': {
+    const path = new URL('../../tests/reports/story-replay-trace.json', import.meta.url);
+    await mkdir(new URL('./', path), { recursive: true });
+    const trace = await runReplay(seed);
+    await writeFile(path, JSON.stringify(trace, null, 2) + '\n');
+    console.log(`[story-replay] Captured ${trace.snapshots.length} milestones at ${fileURLToPath(path)}`);
+    break;
+  }
+  case 'diff': {
+    const first = await runReplay(seed);
+    const repeated = await runReplay(seed);
+    assert.deepEqual(repeated, first, 'The same seed and actions produce the same Story state');
+    const control = await runReplay(seed === 2 ** 31 - 1 ? seed - 1 : seed + 1);
+    assert.notDeepEqual(first.snapshots[1].offers, control.snapshots[1].offers,
+      'A different seed changes the actual starter offers');
+    console.log(`[story-replay] ${first.snapshots.length} milestones matched twice. Changing the seed changed the offers.`);
+    break;
+  }
+  default: throw new Error('usage: story-replay.mjs [capture|diff] [seed]');
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  // The booted jsdom windows keep live timers, so the event loop never drains
-  // on its own — exit explicitly once main() settles or the process hangs.
-  main().then(() => process.exit(0), e => { console.error(e); process.exit(1); });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().then(() => process.exit(0), error => { console.error(error); process.exit(1); });
 }
 
-export { runReplay, diffTraces, snapshot };
+export { runReplay };

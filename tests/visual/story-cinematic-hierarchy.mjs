@@ -187,7 +187,8 @@ async function verifyFinaleRecovery(page, capture, { partner, decision, failOnce
     memory: /As they were in Pallet · Spark · Pikachu/,
     unrecorded: /An empty frame beside yours/,
   }[partner]);
-  assert.match(await portrait.locator('.story-finale-plates').innerText(), /Remembered\s*Forgotten/);
+  assert.doesNotMatch(await portrait.innerText(), /Remembered|Forgotten/);
+  assert.match(await page.evaluate(() => window._journalRenderHTML()), /Recorded endings.*Remembered.*Forgotten/);
   const answer = decision === 'remember' ? remember : forget;
   if (failOnce) {
     await page.evaluate(() => { window.__storyExternalSave = true; });
@@ -286,6 +287,18 @@ try {
         return red > 200 && css.fontFamily.includes('system-ui');
       }), 'The focused or hovered gold button keeps its readable style');
       await capture('hall');
+
+      assert.doesNotMatch(await ceremony.locator('.story-hof-run').innerText(), /seed/i);
+      await ceremony.getByText('Journey record', { exact: true }).click();
+      const seed = (await ceremony.getByText(/Run seed: \d+/).innerText()).match(/Run seed: (\d+)/)?.[1];
+      assert.ok(seed, 'The Hall keeps the exact replay seed in the record');
+      if (!touch) {
+        await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: base.origin });
+        await ceremony.getByRole('button', { name: 'Copy seed', exact: true }).click();
+        await ceremony.getByText('Seed copied.', { exact: true }).waitFor();
+        assert.equal(await page.evaluate(() => navigator.clipboard.readText()), seed);
+      }
+      await ceremony.getByText('Journey record', { exact: true }).click();
 
       await ceremony.getByText('Words from the League', { exact: true }).click();
       if (height <= 260) {

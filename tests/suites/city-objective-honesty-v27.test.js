@@ -37,8 +37,9 @@ function render(eventIndex) {
   const grid = W.__renderCityActionsForTest(eventIndex);
   assert.ok(!String(grid).startsWith('ERR:'), `render failed: ${grid}`);
   const rail = (W.document.getElementById('story-city-tips') || {}).innerHTML || '';
-  const objMatch = rail.match(/class="story-city-objective"[^>]*onclick="([^"]*)"[\s\S]*?obj-kicker">([^<]*)<[\s\S]*?obj-label">([^<]*)</);
-  return { grid, rail, obj: objMatch ? { click: objMatch[1], kicker: objMatch[2], label: objMatch[3] } : null };
+  const action = W.document.querySelector('button.story-city-objective');
+  const obj = action ? { click: action.getAttribute('onclick'), label: action.querySelector('.obj-label').textContent } : null;
+  return { grid, rail, obj };
 }
 
 const cityRows = () => SER.map((r, i) => ({ r, i })).filter(({ r }) => Array.isArray(r) && r[1] === 'City');
@@ -49,7 +50,6 @@ test('City 0 start: professor objective agrees with the professor-gated route', 
   setSm({ team: [] });
   const { grid, obj } = render(0);
   assert.ok(obj, 'objective rendered');
-  assert.equal(obj.kicker, 'START');
   assert.match(obj.label, /starter/i, 'objective points at the Lab');
   assert.match(obj.click, /enterProfessor/, 'objective clicks into the professor');
   // The grid agrees: route is locked behind the same professor visit.

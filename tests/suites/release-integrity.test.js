@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import { MessageChannel } from 'node:worker_threads';
 const source=fs.readFileSync(new URL('../../sw.js',import.meta.url),'utf8');
 function worker(options={}) {
-  const handlers={},cacheContents=new Map(),responses=new Map(),fetches=[];
+  const handlers={},cacheContents=options.cacheContents || new Map(),responses=new Map(),fetches=[];
   const scope='https://example.test/battle/';
   const requestKey=request=>typeof request==='string'?request:request.url.slice(scope.length);
   let activated=0,updates=0;
@@ -47,7 +47,7 @@ function worker(options={}) {
       clients:{claim:async()=>{},matchAll:async()=>options.clients||[]},
     },
   });
-  vm.runInContext(source,context);
+  vm.runInContext(options.version ? source.replace(/const CACHE_VERSION = '[^']+';/, `const CACHE_VERSION = '${options.version}';`) : source,context);
   const shell=vm.runInContext('SHELL.slice()',context),version=vm.runInContext('CACHE_VERSION',context);
   const files=[...shell.filter(k=>k!=='./'),'data/moves.json'].map(u=>{
     const body='content:'+u;responses.set(u,body);return{u,h:crypto.createHash('sha1').update(body).digest('hex').slice(0,16),b:Buffer.byteLength(body)};
@@ -178,10 +178,10 @@ test('the competitive route serves its own offline HTML and unknown routes keep 
   assert.equal(await (await w.fetch('competitive/','navigate')).text(),'content:competitive/index.html');
   assert.equal(await (await w.fetch('competitive/index.html?from=menu','navigate')).text(),'content:competitive/index.html');
   assert.equal((await w.fetch('not-a-route','navigate')).status,404);
-  assert.ok(!w.stored.has('competitive/showdown-worker.js'));
+  assert.ok(w.stored.has('competitive/showdown-worker.js'));
 });
-test('a fresh offline shell includes the standard battle adapter and shared simulator',async()=>{
-  const paths=['competitive/classic-simulation.js','competitive/showdown-engine.js'];
+test('a fresh offline shell includes both battle adapters and the shared simulator',async()=>{
+  const paths=['competitive/classic-simulation.js','competitive/showdown-engine.js','competitive/showdown-worker.js'];
   const w=worker();
   await w.install();
   for(const path of paths){
@@ -198,15 +198,15 @@ test('a fresh offline shell includes the standard battle adapter and shared simu
   assert.equal(wrong.activated,0);
 });
 test('lazy online code rejects stale media and prefers its verified runtime copy',async()=>{
-  const path='competitive/showdown-worker.js';
-  const w=worker({lazyAssets:{[path]:'new worker'}});
+  const path='vendor/tsparticles.slim.min.js';
+  const w=worker({lazyAssets:{[path]:'new particles'}});
   await w.install();
   assert.ok(!w.fetches.includes(path),'bundle is lazy');
-  w.cacheContents.set('battle-assets',new Map([[path,new Response('old worker')]]));
-  assert.equal(await (await w.fetch(path)).text(),'new worker');
+  w.cacheContents.set('battle-assets',new Map([[path,new Response('old particles')]]));
+  assert.equal(await (await w.fetch(path)).text(),'new particles');
   assert.equal(w.fetches.filter(url=>url===path).length,1);
   w.responses.delete(path);
-  assert.equal(await (await w.fetch(path)).text(),'new worker');
+  assert.equal(await (await w.fetch(path)).text(),'new particles');
   assert.equal(w.fetches.filter(url=>url===path).length,1,'served from current runtime');
 });
 test('a verified optional copy of lazy code works offline and wrong network bytes cannot replace it',async()=>{
@@ -223,8 +223,9 @@ test('a verified optional copy of lazy code works offline and wrong network byte
   assert.ok(![...w.cacheContents.entries()].some(([name,cache])=>name.endsWith('-runtime') && cache.has(path)));
 });
 test('cached offline audio serves single byte ranges and reports unsatisfiable requests',async()=>{
-  const w=worker();
   const path='music/background/short1.mp3';
+  const w=worker({lazyAssets:{[path]:'abcdefg'}});
+  await w.install();
   w.cacheContents.set('battle-assets',new Map([[path,new Response('abcdefg',{
     headers:{'Content-Type':'audio/mpeg',ETag:'"media-v1"'},
   })]]));
@@ -317,8 +318,10 @@ test('successful network responses survive cache quota and availability failures
 function mediaFile(u,body){
   return {u,h:crypto.createHash('sha1').update(body).digest('hex').slice(0,16),b:Buffer.byteLength(body)};
 }
+function offlineKey(w, file) {
+  return vm.runInContext(`offlineFileKey(${JSON.stringify(file)})`, w.context);
+}
 test('compact and full packs share gameplay files and use their own sprite payloads', async () => {
-  const w = worker();
   const sprite = 'sprites/gen5ani/pikachu.gif';
   const common = 'music/cries/pikachu.mp3';
   const atlas = 'sprites/compact-frames.bin';
@@ -328,7 +331,9 @@ test('compact and full packs share gameplay files and use their own sprite paylo
   header.writeUInt32BE(index.length);
   const archive = Buffer.concat([header, Buffer.from(index), Buffer.from(frame)]);
   const payloads = { [sprite]: 'GIF animation', [common]: 'shared cry', [atlas]: archive };
-  for (const [key, body] of Object.entries(payloads)) w.responses.set(key, body);
+  const w = worker({lazyAssets:payloads});
+  await w.install();
+  w.fetches.length = 0;
   const manifest = { digest: 'release', files: [
     { ...mediaFile(sprite, payloads[sprite]), p: 'full' },
     mediaFile(common, payloads[common]),
@@ -398,8 +403,113 @@ test('retry reuses partial downloads and applies removals only after the new ass
   assert.equal((await w.message({type:'CACHE_STATE'})).complete,true);
   assert.equal((await w.message({type:'CACHE_STATE'})).cachedCount,2);
 
-  existing.delete(first.u);
+  existing.delete(offlineKey(w, first));
   assert.equal((await w.message({type:'CACHE_STATE'})).complete,false);
+});
+test('a partial pack update preserves A bytes and rollback uses only matching files',async()=>{
+  const changed='music/changed.mp3', shared='music/shared.mp3', delayed='music/delayed.mp3';
+  const cacheContents=new Map();
+  const a='battle-v5-aaaaaaaaaaaa', b='battle-v5-bbbbbbbbbbbb';
+  const makeA=()=>worker({version:a,cacheContents,lazyAssets:{[changed]:'original',[shared]:'same'}});
+  const before=makeA();
+  await before.install();
+  const original=JSON.parse(before.responses.get('offline-assets.json'));
+  assert.equal((await before.message({type:'SYNC_ASSETS',manifest:original})).applied,true);
+  const update=worker({version:b,cacheContents,lazyAssets:{[changed]:'updated',[shared]:'same',[delayed]:'last'}});
+  await update.install();
+  await update.activate();
+  const replacement=JSON.parse(update.responses.get('offline-assets.json'));
+  update.responses.delete(delayed);
+  assert.equal((await update.message({type:'SYNC_ASSETS',manifest:replacement})).applied,false);
+  assert.equal(await (await update.fetch(changed)).text(),'updated');
+  assert.ok(!update.fetches.includes(shared));
+
+  const rollback=makeA();
+  await rollback.install();
+  for (const path of [changed,shared]) rollback.responses.delete(path);
+  assert.equal(await (await rollback.fetch(changed)).text(),'original');
+  assert.equal(await (await rollback.fetch(shared)).text(),'same');
+  assert.equal((await rollback.message({type:'CACHE_STATE'})).complete,true);
+
+  update.responses.set(delayed,'last');
+  assert.equal((await update.message({type:'SYNC_ASSETS',manifest:replacement})).applied,true);
+  assert.equal(await (await rollback.fetch(changed)).status,404,'changed A bytes removed after B commit');
+  assert.equal(await (await rollback.fetch(shared)).text(),'same');
+  assert.equal(await (await update.fetch(changed)).text(),'updated');
+  assert.equal(update.fetches.filter(path=>path===changed).length,1);
+});
+test('legacy uncheckpointed writes cannot masquerade as the applied media release',async()=>{
+  const changed='music/changed.mp3', shared='music/shared.mp3';
+  const w=worker({lazyAssets:{[changed]:'old track',[shared]:'same track'}});
+  await w.install();
+  const manifest=JSON.parse(w.responses.get('offline-assets.json'));
+  const original=manifest.files.filter(file=>file.u===changed||file.u===shared);
+  w.cacheContents.set('battle-assets',new Map([
+    [changed,new Response('different unchecked track')],[shared,new Response('same track')],
+    ['__OFFLINE_MANIFEST__',new Response(JSON.stringify({release:manifest.version,files:original}))],
+  ]));
+  w.responses.delete(changed);
+  assert.equal((await w.fetch(changed)).status,404);
+  assert.equal(await (await w.fetch(shared)).text(),'same track');
+  assert.equal((await w.message({type:'CACHE_STATE'})).complete,false);
+  const repair=await w.message({type:'SYNC_ASSETS',manifest,dryRun:true});
+  assert.equal(repair.fetchCount,1);
+  assert.equal(repair.bytes,original.find(file=>file.u===changed).b);
+});
+test('a core-only update publishes its own pack receipt without downloading shared media', async () => {
+  const path = 'music/shared.mp3';
+  const cacheContents = new Map();
+  const older = worker({ version:'battle-v5-aaaaaaaaaaaa', cacheContents, lazyAssets:{ [path]:'shared bytes' } });
+  await older.install();
+  const manifest = { ...JSON.parse(older.responses.get('offline-assets.json')), digest:'pack-a' };
+  assert.equal((await older.message({ type:'SYNC_ASSETS', manifest })).applied, true);
+  const newer = worker({ version:'battle-v5-bbbbbbbbbbbb', cacheContents, lazyAssets:{ [path]:'shared bytes' } });
+  await newer.install();
+  await newer.activate();
+  const updated = { ...JSON.parse(newer.responses.get('offline-assets.json')), digest:'pack-b' };
+  const sync = { type:'SYNC_ASSETS', manifest:updated };
+  const plan = await newer.message({ ...sync, dryRun:true });
+  assert.equal(plan.fetchCount, 0);
+  assert.equal(plan.removeCount, 0);
+  assert.equal(plan.complete, false);
+  assert.equal(plan.installedDigest, 'pack-a');
+  assert.equal((await newer.message(sync)).applied, true);
+  assert.equal((await newer.message({ type:'CACHE_STATE' })).digest, 'pack-b');
+  assert.equal((await newer.message({ ...sync, dryRun:true })).complete, true);
+  assert.ok(!newer.fetches.includes(path));
+});
+test('overlapping slow legacy verifications share their digest and report progress', async () => {
+  const w = worker();
+  const file = mediaFile('music/shared.mp3', 'same bytes');
+  const files = [file];
+  w.cacheContents.set('battle-assets', new Map([
+    [file.u, new Response('same bytes')],
+    ['__OFFLINE_MANIFEST__', new Response(JSON.stringify({ files }))],
+  ]));
+  let recognizeDigest, releaseDigest, reportProgress;
+  const hashing = new Promise(resolve => { recognizeDigest = resolve; });
+  const blocked = new Promise(resolve => { releaseDigest = resolve; });
+  let calls = 0;
+  w.context.crypto = { subtle: { async digest(...args) {
+    calls++;
+    recognizeDigest();
+    await blocked;
+    return crypto.webcrypto.subtle.digest(...args);
+  } } };
+  w.context.setInterval = callback => { reportProgress = callback; return 1; };
+  w.context.clearInterval = () => {};
+  const readiness = w.message({ type:'CACHE_STATE' });
+  await hashing;
+  const messages = [];
+  const plan = w.message({ type:'SYNC_ASSETS', manifest:{ files }, dryRun:true }, result => messages.push(structuredClone(result)));
+  await new Promise(resolve => setImmediate(resolve));
+  reportProgress();
+  releaseDigest();
+  await plan;
+  assert.equal((await readiness).complete, true);
+  assert.deepEqual(messages[0], { type:'SYNC_PROGRESS', batchId:'test', status:'checking' });
+  assert.equal(messages[1].fetchCount, 0);
+  assert.equal(calls, 1);
 });
 test('offline batches isolate large media and bound concurrent verification bytes',()=>{
   const {context}=worker();
@@ -657,6 +767,34 @@ test('a manual update distinguishes installation, safe waiting and a rejected in
   }
 });
 
+test('an explicit check with no installed worker waits for its first verified activation', async () => {
+  const code = fs.readFileSync(new URL('../../game-update.js', import.meta.url), 'utf8');
+  const worker = new EventTarget();
+  worker.state = 'installing';
+  const operations = [];
+  const window = { document: { currentScript: { src: 'https://example.test/battle/game-update.js' } } };
+  const serviceWorker = {
+    async getRegistration() { return undefined; },
+    async register(url) {
+      operations.push(String(url));
+      return { installing: worker };
+    },
+  };
+  vm.runInNewContext(code, { window, navigator: { serviceWorker }, URL, setTimeout, clearTimeout });
+  let outcome;
+  const check = window.checkForGameUpdate(() => operations.push('installing')).then(value => { outcome = value; });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(operations, ['https://example.test/battle/sw.js', 'installing']);
+  worker.state = 'installed';
+  worker.dispatchEvent(new Event('statechange'));
+  await Promise.resolve();
+  assert.equal(outcome, undefined);
+  worker.state = 'activated';
+  worker.dispatchEvent(new Event('statechange'));
+  await check;
+  assert.equal(outcome, 'setup');
+});
+
 test('the first controller claim arms future updates without reloading a battle', () => {
   const html = fs.readFileSync(new URL('../../battle.html', import.meta.url), 'utf8');
   const start = html.indexOf("if ('serviceWorker' in navigator && location.protocol.startsWith('http'))");
@@ -746,7 +884,7 @@ test('returning from a standard battle applies a pending worker update at the me
   }};
   const ctx=vm.createContext({
     window,state,document:{getElementById:id=>nodes[id],querySelectorAll:()=>[]},
-    titleBattleSetupRevision:0,closeLocalBattleHandoff:()=>{},
+    titleBattleSetupRevision:0,closeLocalBattleHandoff:()=>{},_hideGameViews:()=>{},
     cancelNativeBattleMotion:()=>{},_isFullscreen:()=>false,_reenterFullscreenIfNeeded:()=>{},
   });
   vm.runInContext(html.slice(start,end),ctx);

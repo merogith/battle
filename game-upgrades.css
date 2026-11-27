@@ -1,5 +1,5 @@
 /* Shared product surfaces: Notebook, preparation, practice, recovery and support. */
-:root { --upgrade-space: 1rem; --upgrade-body: 0.9375rem; --upgrade-font: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+:root { --upgrade-space: 1rem; --upgrade-body: 0.9375rem; --upgrade-font: var(--game-font); }
 
 .frontier-seeds {
     margin: 18px 0;
@@ -91,6 +91,7 @@
 .upgrade-objective p { margin:10px 0 0; }
 .upgrade-save-alert { position:fixed; inset:auto 12px max(12px,env(safe-area-inset-bottom)); z-index:17000; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:12px; padding:12px; border:2px solid #ffc277; border-radius:10px; background:#332012; color:#fff4e8; font-size:14px; }
 .upgrade-save-alert p { margin:0; max-width:620px; }
+.upgrade-save-alert--inline { position:static; margin:0 0 12px; justify-content:flex-start; }
 .upgrade-service-notice { max-width:440px; padding:16px; color:var(--text-color); line-height:1.7; }
 .upgrade-readable { --ui-font:var(--upgrade-font); --battle-font:var(--upgrade-font); }
 .upgrade-large-text { --upgrade-body:1.05rem; }
@@ -549,6 +550,7 @@
     align-content: start;
     gap: 0.25rem;
 }
+.story-chapter-invitation[hidden] { display: none; }
 
 .story-chapter-invitation .adventure-button {
   justify-self: start;
@@ -944,9 +946,7 @@
   #screen-story-colress .tx-tera-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 78px), 1fr)); }
   #screen-story-colress .tx-type-pick { margin: 0; min-width: 0; min-height: 44px; padding: 6px !important; flex-wrap: wrap; gap: 3px; border-radius: 6px !important; font: 700 .8125rem/1.2 system-ui,sans-serif !important; text-transform: none; }
   #screen-story-colress .tx-type-pick > span { min-width: 0; font-family: inherit; }
-  #screen-story-colress .tx-tera-pct { margin: 0; font-size: .6875rem; }
   #screen-story-colress .tx-tera-payment { font: 650 .875rem/1.3 system-ui, sans-serif; }
-  #screen-story-colress .tx-tera-rec-row { align-items: stretch; }
 }
 
 @media (max-width: 480px) {
@@ -2290,3 +2290,379 @@ body:has(#screen-story-tutor:not(.hidden) .tx-confirm-bar:not(.tx-confirm-bar--i
   }
   #screen-battle[data-battle-layout="stack"] #move-menu .move-tile-name { grid-row: 2; grid-column: 1 / -1; }
 }
+
+/* Facilities and field tools share the title's controls. The backdrop and
+   item, type or status colors identify what a room is for. */
+.story-screen-root :is(.story-shop-header-row, .story-link-header-row) {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 4px 12px;
+}
+.story-screen-root .story-screen-head-title {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  color: var(--game-text);
+}
+.story-screen-root .story-screen-head-text {
+  color: var(--game-text);
+  font: 770 var(--facility-title-size, 1.0625rem)/1.16 var(--game-font) !important;
+  letter-spacing: normal;
+  overflow-wrap: anywhere;
+}
+.story-screen-root :is(.story-shop-header-row, .story-link-header-row) .story-gold-inline {
+  color: var(--game-gold);
+  font: 700 .875rem/1.2 var(--game-font) !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.story-screen-root :is(.story-shop-back-btn, .story-npc-dialog > summary),
+.relic-navigation button,
+.story-tutor-mon-header .story-mon-info-btn,
+.fanclub-stat-actions button {
+  min-height: var(--game-touch);
+  min-width: var(--game-touch);
+  box-sizing: border-box;
+  border-radius: var(--game-radius);
+  border: 1px solid var(--game-control-line);
+  background: var(--game-control);
+  color: var(--game-text);
+  font: 680 .875rem/1.2 var(--game-font) !important;
+  box-shadow: none;
+  letter-spacing: normal;
+}
+.story-screen-root :is(.story-shop-back-btn, .story-npc-dialog > summary):hover,
+.relic-navigation button:hover:not(:disabled),
+.story-tutor-mon-header .story-mon-info-btn:hover,
+.fanclub-stat-actions button:hover:not(:disabled) {
+  background: var(--game-hover);
+  border-color: var(--game-gold);
+  color: var(--game-text);
+}
+.story-screen-root :is(.story-shop-back-btn, .story-npc-dialog > summary, .story-mon-info-btn):focus-visible,
+.relic-navigation button:focus-visible,
+.fanclub-stat-actions button:focus-visible { outline: 2px solid var(--game-gold); outline-offset: 2px; }
+.story-screen-root .story-shop-back-btn { padding-inline: 8px; }
+.story-screen-root .story-npc-quote { color: var(--game-text); background: var(--game-panel); }
+.story-screen-root .story-shop-header-row #story-fanclub-portrait { display: none; }
+.story-screen-root .story-screen-head-ico,
+.story-screen-root :is(.story-shop-header-row, .story-link-header-row) > span { flex: none; }
+
+#story-shop-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)) !important; }
+.story-screen-root :is(.story-shop-item, .story-artifact-card, .story-tutor-mon, .story-link-mon) {
+  border-color: var(--game-line);
+  border-radius: var(--game-radius);
+  background: color-mix(in srgb, var(--game-panel) 96%, transparent);
+  color: var(--game-text);
+  box-shadow: none;
+}
+.story-screen-root :is(.story-shop-item, .story-artifact-card):hover { border-color: var(--game-control-line); }
+.story-screen-root :is(.story-shop-item, .story-artifact-card).is-claimed { opacity: 1; }
+.story-screen-root :is(.story-shop-item, .story-artifact-card) :is(h4, .desc, .price, .story-shop-item-qty) {
+  font-family: var(--game-font) !important;
+  letter-spacing: normal;
+}
+.story-screen-root :is(.story-shop-item, .story-artifact-card) h4 {
+  color: var(--game-text);
+  font-weight: 740;
+  flex: 1 1 auto;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.story-screen-root .story-shop-item .desc { color: var(--game-muted); }
+.story-screen-root :is(.story-shop-buy-btn, .story-link-btn) {
+  min-height: var(--game-touch);
+  border-radius: var(--game-radius);
+  background: var(--game-control);
+  font: 680 .875rem/1.25 var(--game-font) !important;
+  letter-spacing: normal;
+  box-shadow: none;
+}
+.story-screen-root .story-shop-buy-btn:not(:disabled) {
+  border-color: var(--game-gold) !important;
+  background: var(--game-gold);
+  color: var(--game-on-gold) !important;
+}
+.story-screen-root .story-shop-buy-btn:hover:not(:disabled) { background: var(--game-gold-hover); }
+.story-screen-root .story-shop-item-bottom { flex-wrap: wrap; }
+
+.story-tutor-mon-header {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) var(--game-touch);
+  align-items: center;
+  gap: 2px;
+  padding-inline-end: 8px;
+}
+.story-tutor-mon-header > .story-tutor-mon-toggle {
+  min-width: 0;
+  width: 100%;
+  color: var(--game-text);
+  box-shadow: none;
+  gap: 4px;
+  scroll-margin-block-start: 64px;
+}
+.story-tutor-mon-header > .story-tutor-mon-toggle[aria-expanded="true"] {
+  border-inline-start-color: var(--game-gold);
+}
+.story-screen-root .story-tutor-mon-header .story-tutor-mon-name,
+.story-screen-root .story-tutor-mon-header .story-tutor-mon-meta {
+  font-family: var(--game-font) !important;
+  letter-spacing: normal;
+}
+.story-screen-root .story-tutor-mon-header .story-tutor-mon-name { font-weight: 740; color: var(--game-text); }
+.story-screen-root .story-tutor-mon-header .story-tutor-mon-meta {
+  color: var(--game-muted);
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+.story-tutor-mon-header .story-mon-info-btn {
+  width: var(--game-touch);
+  height: var(--game-touch);
+  font-size: 1.1rem !important;
+}
+
+#story-artifact-hall-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px;
+  overflow-y: auto;
+}
+.relic-navigation {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--game-line);
+  background: var(--game-deep);
+}
+.relic-navigation button[aria-pressed="true"],
+.relic-navigation button[aria-pressed="true"]:hover {
+  border-color: var(--game-gold);
+  background: var(--game-gold);
+  color: var(--game-on-gold);
+}
+.relic-navigation button:disabled { opacity: .58; cursor: default; }
+.relic-browse-unavailable[hidden] { display: none; }
+:is(.relic-browse-unavailable, #story-artifact-shop-blurb) { margin: 0; }
+.relic-owned-card + .relic-owned-card { margin-block-start: 8px; }
+.relic-state[data-active="true"] { color: #bde9b9; }
+
+.fanclub-stats { display: grid; gap: 4px; }
+.fanclub-stat {
+  display: grid;
+  grid-template-columns: minmax(75px, 1fr) minmax(15px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 3px 6px;
+  border-radius: var(--game-radius);
+  background: var(--game-deep);
+}
+.fanclub-stat :is(.fanclub-stat-value,.fanclub-stat-stock) {
+  color: var(--game-muted);
+  font: 640 .8125rem/1.3 var(--game-font) !important;
+  font-variant-numeric: tabular-nums;
+}
+.fanclub-stat-value strong { margin-inline-end: 3px; color: var(--game-text); }
+.fanclub-stat-meter { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--game-control); }
+.fanclub-stat-meter span { height: 100%; }
+.fanclub-stat-actions,
+.fanclub-stat-stock { display: inline-flex; align-items: center; gap: 4px; }
+.fanclub-stat-stock > img { width: 21px; height: 21px; object-fit: contain; }
+.fanclub-stat-actions button { padding-inline: 4px; }
+.fanclub-stat-actions button.fanclub-add:not(:disabled) { border-color: var(--game-gold); color: var(--game-gold); }
+.fanclub-stat-actions button:disabled { opacity: .55; }
+.tx-tera-reasons:not([open]) { margin-block-end: 0; }
+
+:is(#modal-story-bag, #modal-story-party) .modal-content,
+.upgrade-dialog--notebook {
+  border-color: var(--game-line);
+  border-radius: var(--game-radius);
+  background: var(--game-panel);
+  color: var(--game-text);
+}
+.upgrade-dialog--notebook .upgrade-header { background: var(--game-panel); }
+.upgrade-dialog--notebook .upgrade-header h2 { color: var(--game-text); }
+.upgrade-dialog--notebook .upgrade-tabs button[aria-current="page"],
+.story-bag-pockets button[aria-pressed="true"],
+.pc-section-switcher button[aria-pressed="true"] {
+  border-color: var(--game-gold);
+  background: var(--game-gold);
+  color: var(--game-on-gold);
+}
+.story-bag-pockets button:not([aria-pressed="true"]),
+.pc-section-switcher button:not([aria-pressed="true"]) {
+  color: var(--game-text);
+  border-color: var(--game-control-line);
+  background: var(--game-control);
+}
+.upgrade-large-text .story-screen-root { --facility-title-size: 1.25rem; }
+
+/* Give long room names their own line when controls crowd enlarged text. */
+@media (max-width: 480px), (orientation: landscape) and (max-height: 420px) {
+  .upgrade-large-text :is(#screen-story-link, #screen-story-colress, #screen-story-stone-shop, #screen-story-pokemoncenter)
+    :is(.story-shop-header-row, .story-link-header-row) {
+    flex-wrap: wrap;
+  }
+  .upgrade-large-text :is(#screen-story-link, #screen-story-colress, #screen-story-stone-shop, #screen-story-pokemoncenter)
+    :is(.story-shop-header-row, .story-link-header-row) > :is(h3, div):has(.story-screen-head-text) {
+    flex: 1 0 100% !important;
+    order: 1;
+  }
+}
+
+@media (max-width: 380px) {
+  .story-screen-root :is(.story-shop-header-row, .story-link-header-row) { gap: 5px; padding-inline-start: 6px; }
+  .story-screen-root .story-screen-head-ico { display: none; }
+  .story-screen-root .story-npc-dialog > summary { font-size: .6875rem !important; }
+  .story-screen-root :is(.story-shop-header-row, .story-link-header-row) .story-gold-icon { display: none; }
+  .story-tutor-mon-header > .story-tutor-mon-toggle { padding-inline: 6px !important; }
+  .fanclub-stat { grid-template-columns: minmax(45px, 1fr) auto; gap: 4px; }
+  .fanclub-stat-meter { display: none; }
+}
+@media (orientation: landscape) and (max-height: 420px) {
+  .story-screen-root :is(.story-shop-header-row, .story-link-header-row) { padding-block: 4px !important; }
+  .relic-navigation { padding-block: 3px; }
+  .relic-navigation button { padding-block: 0; }
+}
+
+#screen-collection .story-collection-tab {
+  min-height: var(--game-touch);
+  border-color: var(--game-control-line);
+  border-radius: var(--game-radius);
+  background: var(--game-control);
+  color: var(--game-text);
+  font-family: var(--game-font) !important;
+  box-shadow: none;
+}
+#screen-collection .story-collection-tab:hover { background: var(--game-hover); border-color: var(--game-gold); }
+#screen-collection .story-collection-tab[aria-selected="true"] {
+  border-color: var(--game-gold);
+  background: var(--game-gold);
+  color: var(--game-on-gold);
+}
+#screen-collection :is(.story-collection-tab, #pdex-search, .pdex-more-filters > summary):focus-visible {
+  outline: 2px solid var(--game-gold);
+  outline-offset: 2px;
+}
+
+#screen-story-trainercreate {
+  font-family: var(--game-font);
+  color: var(--game-text);
+}
+#screen-story-trainercreate :is(.story-create-title, .story-create-sec-title, .story-create-label, .story-create-diff-name) {
+  color: var(--game-text);
+  font-family: var(--game-font) !important;
+  letter-spacing: normal;
+  text-transform: none;
+  text-shadow: none;
+}
+#screen-story-trainercreate .story-create-title { font-size: clamp(1.125rem, 4vw, 1.65rem); }
+#screen-story-trainercreate .story-create-sec-title { font-size: .9375rem; }
+#screen-story-trainercreate .story-create-label { font-size: .8125rem; color: var(--game-muted); }
+#screen-story-trainercreate :is(.story-create-section, .story-create-advanced) {
+  border: 1px solid var(--game-line);
+  border-radius: var(--game-radius);
+  background: var(--game-panel);
+  box-shadow: none;
+}
+#screen-story-trainercreate :is(.story-create-back,.story-create-mini-btn,.story-create-diff-card,.story-create-gen-preset,.story-create-input) {
+  min-height: var(--game-touch);
+  border: 1px solid var(--game-control-line);
+  border-radius: var(--game-radius) !important;
+  background: var(--game-control);
+  color: var(--game-text);
+  font: 650 .875rem/1.25 var(--game-font) !important;
+  letter-spacing: normal;
+  box-shadow: none;
+  text-shadow: none;
+}
+#screen-story-trainercreate .story-create-diff-card { padding: 6px 8px; }
+#screen-story-trainercreate .story-create-diff-name { font-size: .875rem; }
+#screen-story-trainercreate :is(.story-create-diff-card,.story-create-gen-preset)[aria-checked="true"],
+#screen-story-trainercreate .story-create-begin {
+  background: var(--game-gold);
+  border: 1px solid var(--game-gold);
+  color: var(--game-on-gold);
+  border-radius: var(--game-radius);
+  font: 750 .9375rem/1.25 var(--game-font) !important;
+  letter-spacing: normal;
+  box-shadow: none;
+}
+#screen-story-trainercreate [aria-checked="true"] .story-create-diff-name { color: var(--game-on-gold); }
+#screen-story-trainercreate .story-create-begin:hover { background: var(--game-gold-hover); box-shadow: none; }
+#screen-story-trainercreate .story-create-advanced > summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  min-height: var(--game-touch);
+  padding: 6px 12px;
+  color: var(--game-text);
+  font: 690 .875rem/1.25 var(--game-font) !important;
+  letter-spacing: normal;
+  text-transform: none;
+}
+#screen-story-trainercreate .story-create-advanced > summary::before { content: '▸'; }
+#screen-story-trainercreate .story-create-advanced[open] > summary::before { content: '▾'; }
+#story-create-rules-summary { margin-inline-start: auto; color: var(--game-muted); font-weight: 500; }
+#story-create-difficulty-note {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--game-muted);
+  font: .875rem/1.3 var(--game-font) !important;
+}
+.story-screen-root :is(.tx-pill, .tx-unlearn-btn, .tx-hp-retune) {
+  font-family: var(--game-font) !important;
+  letter-spacing: normal;
+}
+.story-create-gen-field .story-create-sec-title { margin-block-end: 6px; }
+
+#screen-story-colress :is(.story-tutor-section-title, .story-tutor-moves-hint, .story-tutor-choice-actions button, .story-tutor-price) {
+  font-family: var(--game-font) !important;
+  letter-spacing: normal;
+}
+#screen-story-colress .story-tutor-section-title { font-size: .875rem; text-transform: none; }
+#screen-story-colress .story-tutor-moves-hint { color: var(--game-muted); font-size: .8125rem; }
+#screen-story-colress .story-tutor-choice-actions button {
+  min-height: var(--game-touch);
+  border-radius: var(--game-radius) !important;
+  font-size: .875rem !important;
+  box-shadow: none;
+}
+#screen-story-colress .story-tutor-choice-actions button:not(.type-badge) { background: var(--game-control) !important; }
+#screen-story-colress .story-tutor-choice-actions button:not(:disabled):hover { border-color: var(--game-gold); }
+
+#screen-collection .story-collection-title,
+:is(#modal-story-bag,#modal-story-party) :is(.story-bag-modal-title,.story-party-modal-title) {
+  color: var(--game-text);
+  font-family: var(--game-font) !important;
+  letter-spacing: normal;
+  text-shadow: none;
+}
+#screen-collection :is(#pdex-search,.pdex-more-filters > summary,.pdex-entry button) {
+  border-color: var(--game-control-line);
+  background: var(--game-control);
+  color: var(--game-text);
+}
+#screen-collection .pdex-entry-facts > div {
+  border-color: var(--game-line);
+  border-radius: var(--game-radius);
+  background: var(--game-panel);
+}
+
+.story-shop-item p.desc { margin: 4px 0 0; }
+.story-shop-item .shop-item-detail { margin: 0; }
+.story-shop-item .shop-item-detail p { color: var(--game-muted); }
+.story-shop-item .shop-item-detail summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--game-touch);
+  padding-block: 0;
+}
+.shop-item-detail summary:focus-visible { outline: 2px solid var(--game-gold); }

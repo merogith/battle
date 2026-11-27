@@ -103,7 +103,13 @@ test('Gym and League entrances use one matching caption and cancel on entry', as
             intro.querySelector('[data-vs2-battle]').click();
             assert.equal(records.at(-1).stopped, true);
         }
-        for (const options of [{ repeat: true }, { speed: 'fast' }, { source: 'champion' }]) {
+        for (const speed of ['fast', 'instant']) for (const [event, id] of encounters) {
+            const intro = await openIntro(event, { speed });
+            assert.equal(intro.querySelector('[data-encounter-caption]')?.textContent, dialogueLines[id].caption);
+            assert.equal(records.length, encounters.length);
+            intro.querySelector('[data-vs2-battle]').click();
+        }
+        for (const options of [{ repeat: true }, { source: 'champion' }]) {
             const intro = await openIntro('Champion', options);
             assert.equal(intro.querySelector('[data-encounter-caption]'), null);
             assert.equal(records.length, encounters.length);
@@ -119,10 +125,17 @@ test('Gym and League entrances use one matching caption and cancel on entry', as
         assertVoice(raid, 'containment-monitor');
         raid.querySelector('[data-encounter-enter]').click();
         assert.equal(records.at(-1).stopped, true);
+        for (const speed of ['fast', 'instant']) {
+            window.settings.battleSpeed = speed;
+            const quietRaid = story.showRaidEncounterIntro('Mewtwo', 'extra.mewtwo.raid', afterIntro);
+            assert.equal(quietRaid.querySelector('[data-encounter-caption]')?.textContent, dialogueLines['containment-monitor'].caption);
+            assert.equal(records.length, encounters.length + 1);
+            quietRaid.querySelector('[data-encounter-enter]').click();
+        }
         const miniRaid = story.showRaidEncounterIntro('Mewtwo', 'extra.mewtwo.miniRaid', afterIntro);
         assert.equal(miniRaid.querySelector('[data-encounter-caption]'), null);
         miniRaid.querySelector('[data-encounter-enter]').click();
-        assert.equal(launched, encounters.length + 6);
+        assert.equal(launched, encounters.length * 3 + 7);
     } finally {
         window.AudioSystem.playDialogue = originalPlayDialogue;
         window.StoryMode.isGymIntermissionAdvance = originalGymAdvance;

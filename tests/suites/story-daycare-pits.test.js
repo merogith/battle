@@ -16,6 +16,7 @@
 // Run: node --test tests/suites/story-daycare-pits.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { setImmediate } from 'node:timers/promises';
 import { loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
@@ -146,12 +147,12 @@ test('Daycare names the permanent trade and only exchanges the partner after con
   assert.match($('modal-game-confirm-text').textContent, /Snorlax.*permanently/);
   assert.ok(sm.team.some(slot => slot.id === snorlaxId));
   window._gameConfirmResult(false);
-  await Promise.resolve();
+  await setImmediate();
   assert.ok(sm.team.some(slot => slot.id === snorlaxId));
   assert.equal(sm.daycare.eggEventDone, false);
   btn.click();
   window._gameConfirmResult(true);
-  await Promise.resolve();
+  await setImmediate();
   // Parent removed and NOT replaced by a returning partner — replaced by an egg.
   assert.equal(sm.team.length, before, 'team size unchanged: parent out, egg in');
   assert.equal(sm.daycare.eggEventDone, true, 'egg event marked done (one-time)');
@@ -219,7 +220,7 @@ test('a blocked Daycare save keeps the original partner and cannot hatch an unco
   try {
     SM.enterDaycare();
     $('story-daycare-overlay').querySelector('[data-daycare-drop]:enabled').click();
-    await Promise.resolve();
+    await setImmediate();
     assert.equal(sm.team[0], partner);
     assert.equal(sm.daycare.eggEventDone, false);
     assert.equal(sm.team.some(slot => slot.isEgg), false);
@@ -319,12 +320,12 @@ test('Fight Club forfeit kills all three fighters (you do not leave whole)', asy
   forfeit.click();
   assert.match($('modal-game-confirm-text').textContent, /Garchomp, Gengar, Lapras.*permanently/);
   window._gameConfirmResult(false);
-  await Promise.resolve();
+  await setImmediate();
   assert.equal(sm.pits._teamBeforePit.length + sm.pcBox.length, totalBefore, 'cancel preserves the original team');
   assert.deepEqual(Array.from(sm.pits._activePickIds), Array.from(ids), 'cancel leaves the bracket available to retry');
   forfeit.click();
   window._gameConfirmResult(true);
-  await Promise.resolve();
+  await setImmediate();
   assert.equal(sm.team.length + sm.pcBox.length, totalBefore - 3, 'all three fighters died');
   const anyBracketLeft = [...sm.team, ...sm.pcBox].some(s => ids.includes(s.id));
   assert.equal(anyBracketLeft, false, 'none of the three survive (team or PC)');

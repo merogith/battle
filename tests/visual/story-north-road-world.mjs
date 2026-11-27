@@ -92,6 +92,12 @@ try {
         return { index: run.eventIndex, rng: run._strngState, choices: run.storyChoices, gold: run.gold };
     });
     const beforeAtlas = await snapshot();
+    const town = page.getByRole('region', { name: 'City', exact: true });
+    await town.getByRole('heading', { name: 'Flintreach Town' }).waitFor();
+    assert.equal(await town.locator('.world-town-landmark').isVisible(), true);
+    const badges = await page.evaluate(() => window.StoryMode.state.badges);
+    assert.equal(await town.getByText(`${badges}/8 Badges`, { exact: true }).isVisible(), true);
+    await town.locator('button.story-city-objective').waitFor();
     const openAtlas = page.getByRole('button', { name: 'Journey Atlas', exact: true });
     await openAtlas.click();
     const atlas = page.getByRole('dialog', { name: 'Journey Atlas' });
@@ -165,6 +171,53 @@ try {
     assert.ok(await notes.evaluate(node => node.scrollWidth <= node.clientWidth));
     if (output) await page.screenshot({ path: join(output, 'reedmarket-private-field-note.png') });
     console.log('Reedmarket kept the previous chapter’s private note in the town disclosure.');
+
+    await page.setViewportSize({ width: 568, height: 260 });
+    await page.evaluate(() => {
+        const story = window.__storyTest;
+        const run = story.sm;
+        run.eventIndex = story.STORY_EVENTS_RAW.findIndex(row => row[2] === 'City8');
+        run.citiesArrived[8] = true;
+        run.mfFirstInBattle = true;
+        const saved = JSON.parse(localStorage.getItem('pbs_story_save'));
+        localStorage.setItem('pbs_story_save', JSON.stringify({ ...saved, mfFirstInBattle: true }));
+        const setItem = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (key, value) {
+            if (key === 'pbs_story_save') {
+                Storage.prototype.setItem = setItem;
+                throw new DOMException('Simulated full storage', 'QuotaExceededError');
+            }
+            return setItem.call(this, key, value);
+        };
+        story.mfFirstHandleBattleEnd(false);
+    });
+    const defeat = page.getByRole('dialog', { name: 'The Wall Holds' });
+    const recovery = page.getByRole('alertdialog', { name: 'Battle progress needs saving' });
+    const retrySave = recovery.getByRole('button', { name: 'Retry save' });
+    await retrySave.waitFor();
+    assert.equal(await defeat.count(), 0);
+    assert.equal(await page.locator('#upgrade-save-alert').count(), 0);
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('pbs_story_save')).mfFirstInBattle), true);
+    const [backup] = await Promise.all([
+        page.waitForEvent('download'),
+        recovery.getByRole('button', { name: 'Back up now' }).click(),
+    ]);
+    assert.equal(backup.suggestedFilename(), 'pokemon-battle-backup.json');
+    await retrySave.click();
+    const returnToTown = defeat.getByRole('button', { name: 'Return to Vespergate', exact: true });
+    await returnToTown.waitFor();
+    const actionBounds = await returnToTown.boundingBox();
+    assert.ok(actionBounds.y >= 0 && actionBounds.y + actionBounds.height <= 260, 'Defeat continuation fits a short display');
+    assert.equal(await returnToTown.evaluate(node => node === document.activeElement), true);
+    await page.keyboard.press('Tab');
+    assert.equal(await defeat.getByRole('button', { name: 'Retry battle' }).evaluate(node => node === document.activeElement), true);
+    await page.keyboard.press('Tab');
+    assert.equal(await returnToTown.evaluate(node => node === document.activeElement), true);
+    if (output) await page.screenshot({ path: join(output, 'mystery-defeat-568x260.png') });
+    await page.keyboard.press('Enter');
+    await defeat.waitFor({ state: 'detached' });
+    assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('pbs_story_save')).mfEncounter1), 'lost');
+    console.log('The Mystery Figure loss recovers a denied save, fits short landscape, traps Tab and returns to Vespergate.');
     assert.deepEqual(errors, []);
 } finally {
     await browser.close();

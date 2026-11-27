@@ -82,7 +82,7 @@
                     image.onerror = null;
                     image.removeAttribute('src');
                 };
-                if (!profile.fallback) { clear(); return; }
+                if (!profile.fallback || profile.fallback === profile.background) { clear(); return; }
                 image.onerror = clear;
                 image.src = profile.fallback;
             };

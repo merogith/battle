@@ -53,8 +53,9 @@ function render(eventIndex) {
   assert.ok(!String(grid).startsWith('ERR:'), `render failed: ${grid}`);
   const rail = (W.document.getElementById('story-city-tips') || {}).innerHTML || '';
   const quote = (W.document.getElementById('story-city-quote') || {}).textContent || '';
-  const objMatch = rail.match(/class="story-city-objective"[^>]*onclick="([^"]*)"[\s\S]*?obj-kicker">([^<]*)<[\s\S]*?obj-label">([^<]*)</);
-  return { grid, rail, quote, obj: objMatch ? { click: objMatch[1], kicker: objMatch[2], label: objMatch[3] } : null };
+  const action = W.document.querySelector('button.story-city-objective');
+  const obj = action ? { click: action.getAttribute('onclick'), label: action.querySelector('.obj-label').textContent } : null;
+  return { grid, rail, quote, obj };
 }
 
 const cityRowIdx = (pred) => SER.findIndex(r => Array.isArray(r) && r[1] === 'City' && pred(r));

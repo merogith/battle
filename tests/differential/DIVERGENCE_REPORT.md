@@ -1,6 +1,6 @@
 # Differential Divergence Report
 
-> Generated 2026-11-18 by `tests/differential/run-report.mjs`.
+> Generated 2026-11-26 by `tests/differential/run-report.mjs`.
 > Reference: **@pkmn/sim** (MIT, the auto-synced Pokémon Showdown simulator) ·
 > Subject: the in-house engine in `battle.html` (driven headless via the jsdom harness).
 > This is **Stage 0** of the oracle-led plan (`docs/BATTLE_ENGINE_INVESTIGATION.md`): no game

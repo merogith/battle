@@ -49,9 +49,10 @@ test('the status-flash keyframe + class exist in CSS', () => {
 // ── B3 — low-HP audio cue ───────────────────────────────────────────────────────
 test("updateUI plays the lowHp cue once per crossing for the player's active mon", () => {
     const b = bodyOf('updateUI');
-    assert.match(b, /mon === state\.pActive/, "scoped to the player's active mon");
-    assert.match(b, /hpPct <= 10 && mon\.currentHp > 0/, 'only in the critical band, still alive (no beep on faint)');
-    assert.match(b, /_lowHpBeeped/, 're-arm flag so it fires once per crossing');
+    assert.match(b, /if \(s === 'p'\) \{[\s\S]{0,400}slot = party\.indexOf\(mon\)/,
+        'uses the party slot on the displayed player side');
+    assert.match(b, /alive && hpPct <= 10 && !warned\.has\(slot\)/, 'warns only for a living Pokémon entering the critical band');
+    assert.match(b, /member\.currentHp \/ member\.maxHp > \.1\) warned\.delete\(index\)/, 're-arms on healing');
     assert.match(b, /playUiSfx\('lowHp'/, 'plays the already-vendored lowHp beep');
 });
 

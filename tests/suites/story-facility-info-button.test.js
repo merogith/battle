@@ -60,24 +60,18 @@ for (const fac of FACILITIES) {
     const btns = await infoButtonsIn(fac.host);
     assert.ok(btns.length >= ST.sm.team.length,
       `${fac.label}: one info button per team mon (found ${btns.length} for ${ST.sm.team.length} mons)`);
-    // Same control everywhere: a span-button that opens the summary for a team index.
+    // Both controls are native siblings, so assistive tech and pointer input
+    // can invoke either action without toggling the other.
     const onclick = btns[0].getAttribute('onclick') || '';
     assert.match(onclick, /openSummary\(/, `${fac.label}: info button opens the full summary`);
-    assert.equal(btns[0].getAttribute('title'), 'Full summary', `${fac.label}: consistent tooltip`);
-    assert.equal(btns[0].getAttribute('aria-label'), 'Full summary', `${fac.label}: consistent aria-label`);
+    assert.equal(btns[0].getAttribute('title'), 'Pokémon summary', `${fac.label}: consistent tooltip`);
+    for (const info of btns) {
+      assert.equal(info.tagName, 'BUTTON');
+      assert.equal(info.closest('.story-tutor-mon-toggle'), null);
+      const toggle = info.previousElementSibling;
+      assert.ok(toggle?.matches('button.story-tutor-mon-toggle'));
+      assert.equal(info.dataset.summaryIndex, toggle.dataset.team);
+      assert.equal(info.getAttribute('aria-label'), `Summary for ${ST.sm.team[info.dataset.summaryIndex].name}`);
+    }
   });
 }
-
-test('the shared info button never nests a <button> inside the header toggle button', () => {
-  // The control is a <span role="button">, not a <button>, so it is valid inside the
-  // header <button class="story-tutor-mon-toggle">. A literal <button class="story-mon-info-btn">
-  // would be invalid nested-interactive markup.
-  prime();
-  SM.enterLink();
-  const host = doc.getElementById('story-link-team');
-  assert.ok(host, 'link host present');
-  assert.equal(host.querySelectorAll('button.story-mon-info-btn').length, 0,
-    'info control is a span (role=button), never a nested <button>');
-  assert.ok(host.querySelectorAll('span.story-mon-info-btn[role="button"]').length >= 1,
-    'info control is a span with role=button');
-});

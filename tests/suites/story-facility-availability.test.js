@@ -1,9 +1,10 @@
 import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Dex } from '@pkmn/dex';
-import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
+import { loadEngine, openTutorMon, installWritableStorage } from '../helpers/load-engine.js';
 
 const engine = await loadEngine();
+installWritableStorage(engine.window);
 const w = engine.window;
 const story = w.StoryMode;
 const state = w.__storyTest;

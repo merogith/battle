@@ -15,11 +15,12 @@
 
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine } from '../helpers/load-engine.js';
 
 let W, ST, SER, city8Idx;
 before(async () => {
     ({ window: W } = await loadEngine());
+    installWritableStorage(W);
     ST = W.__storyTest;
     SER = ST.STORY_EVENTS_RAW;
     city8Idx = SER.findIndex(r => Array.isArray(r) && r[1] === 'City' && /City8/.test(String(r[2])));
@@ -32,7 +33,7 @@ function seedCity8(extra = {}) {
         team: [{ name: 'Pikachu', build: { m: ['Thunderbolt'], evs: {} }, id: 'm_x' }],
         settings: { enabledGens: [1, 2, 3, 4, 5, 6, 7, 8, 9], megaOn: true, zOn: true, dynaOn: true, teraOn: true },
         storyDifficulty: 'normal', mfEncounter1: null, mfFirstInBattle: false, mfFirstTeamLock: null,
-        storyChoices: {}, inventory: {}, pits: {},
+        storyChoices: {}, inventory: {}, pits: {}, storyBattleCheckpoint: null,
     }, extra);
     return ST.sm;
 }
@@ -40,7 +41,7 @@ function seedCity8(extra = {}) {
 function closeMfOverlays() {
     for (const id of ['story-mf-first-defeat-overlay']) {
         const el = W.document.getElementById(id);
-        if (el) el.remove();
+        if (el) { el.remove(); el.releaseSideDialog?.(); }
     }
     W.document.querySelectorAll('.story-narrative-overlay, .vs-stage').forEach(el => {
         const host = el.closest('div[style*="position:fixed"], div[style*="position: fixed"]') || el;
@@ -108,8 +109,12 @@ test('loss: result recorded, bag refunded, gold untouched, defeat overlay with r
     assert.equal(ST.sm.gold, goldBefore, 'no gold fee — loss is free');
     const ov = W.document.getElementById('story-mf-first-defeat-overlay');
     assert.ok(ov, 'defeat overlay mounted');
+    assert.equal(ov.getAttribute('role'), 'dialog');
+    assert.equal(ov.getAttribute('aria-label'), 'The Wall Holds');
     assert.ok(ov.querySelector('#mf-first-defeat-retry'), 'retry button present');
-    assert.ok(ov.querySelector('#mf-first-defeat-leave'), 'walk-away button present');
+    const continueToTown = ov.querySelector('#mf-first-defeat-leave');
+    assert.match(continueToTown.textContent, /Return to Vespergate/);
+    assert.equal(W.document.activeElement, continueToTown);
     closeMfOverlays();
 });
 
@@ -121,6 +126,75 @@ test('win: result recorded, encounter closes, no defeat overlay', () => {
     assert.equal(ST.sm.storyChoices['main.mfFirst.result'], 'won');
     assert.equal(ST.mfFirstAvailable(), false, 'beaten — no longer offered');
     assert.equal(W.document.getElementById('story-mf-first-defeat-overlay'), null);
+    closeMfOverlays();
+});
+
+test('a denied result write keeps the encounter pending until a retry saves the chosen outcome', () => {
+    const key = 'pbs_story_save';
+    const run = seedCity8({ inventory: { potion: 1 }, storyRetryInventorySnapshot: { potion: 3 } });
+    run.team[0].currentHp = 1;
+    run.mfFirstInBattle = true;
+    assert.equal(W.StoryMode.upgrades.save(), true);
+    const storage = W.localStorage;
+    const original = storage.setItem;
+    const before = storage.getItem(key);
+    try {
+        storage.setItem = (name, value) => {
+            if (name === key) throw new Error('Storage is read-only');
+            original(name, value);
+        };
+        ST.mfFirstHandleBattleEnd(false);
+        assert.equal(storage.getItem(key), before);
+        assert.equal(run.mfFirstInBattle, true);
+        assert.equal(run.mfEncounter1, null);
+        assert.equal(run.team[0].currentHp, 1);
+        assert.equal(run.inventory.potion, 1);
+        assert.equal(run.storyRetryInventorySnapshot.potion, 3);
+        assert.equal(W.document.getElementById('story-mf-first-defeat-overlay'), null);
+    } finally {
+        storage.setItem = original;
+    }
+    W.document.querySelector('#story-battle-save-retry button').click();
+    const saved = JSON.parse(storage.getItem(key));
+    assert.equal(saved.mfEncounter1, 'lost');
+    assert.equal(saved.storyChoices['main.mfFirst.result'], 'lost');
+    assert.equal(saved.mfFirstInBattle, false);
+    assert.equal(saved.team[0].currentHp, null);
+    assert.equal(saved.inventory.potion, 3);
+    assert.equal(saved.storyRetryInventorySnapshot, null);
+    assert.ok(W.document.getElementById('story-mf-first-defeat-overlay'));
+    closeMfOverlays();
+});
+
+test('entry saves the first foe roster before opening the confrontation', () => {
+    const key = 'pbs_story_save';
+    const run = seedCity8();
+    assert.equal(W.StoryMode.upgrades.save(), true);
+    const storage = W.localStorage;
+    const original = storage.setItem;
+    const before = storage.getItem(key);
+    try {
+        storage.setItem = (name, value) => {
+            if (name === key) throw new Error('Storage is read-only');
+            original(name, value);
+        };
+        ST.mfFirstLaunchFight();
+        assert.equal(run.mfFirstInBattle, false);
+        assert.equal(run.mfFirstTeamLock, null);
+        assert.equal(run.storyBattleCheckpoint, null);
+        assert.equal(storage.getItem(key), before);
+        assert.equal(W.document.querySelector('#story-battle-save-retry h2').textContent, 'Save before battling');
+    } finally {
+        storage.setItem = original;
+    }
+    W.document.querySelector('#story-battle-save-retry button').click();
+    const saved = JSON.parse(storage.getItem(key));
+    assert.equal(saved.mfFirstTeamLock.length, 6);
+    assert.deepEqual(saved.mfFirstTeamLock, JSON.parse(JSON.stringify(run.mfFirstTeamLock)));
+    assert.equal(saved.mfFirstInBattle, true);
+    assert.equal(saved.storyBattleCheckpoint.kind, 'mystery-first');
+    assert.equal(saved.storyBattleCheckpoint.eventIndex, city8Idx);
+    assert.deepEqual(saved.storyBattleCheckpoint.inventory, saved.inventory);
     closeMfOverlays();
 });
 
@@ -222,7 +296,7 @@ function plantSave(extra = {}) {
     }, extra)));
 }
 
-test('load(): missing rework fields back-fill to null and the battle transient never resumes', () => {
+test('load(): legacy active flag without a checkpoint returns to town', () => {
     plantSave({ mfFirstInBattle: true }); // pre-rework save + a mid-battle close
     // load() merges the parsed save over the live sm (fresh boots start from
     // the defaults literal) — emulate a fresh boot by dropping the fields.
@@ -237,9 +311,15 @@ test('load(): missing rework fields back-fill to null and the battle transient n
 });
 
 test('load(): a malformed team lock is dropped, not resumed into', () => {
-    plantSave({ mfFirstTeamLock: [{ name: 'Mewtwo' /* no build */ }] });
+    plantSave({
+        eventIndex: city8Idx, badges: 8, mfFirstInBattle: true,
+        mfFirstTeamLock: [{ name: 'Mewtwo' /* no build */ }],
+        storyBattleCheckpoint: { kind: 'mystery-first', eventIndex: city8Idx, inventory: {} },
+    });
     assert.equal(ST.loadSaveForTest(), true);
     assert.equal(ST.sm.mfFirstTeamLock, null, 'malformed lock nulled');
+    assert.equal(ST.sm.storyBattleCheckpoint, null);
+    assert.equal(ST.sm.mfFirstInBattle, false);
 });
 
 // ── City hub integration ─────────────────────────────────────────────────────

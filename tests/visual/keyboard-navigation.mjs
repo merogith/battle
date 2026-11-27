@@ -41,8 +41,8 @@ async function verifyOpening(page) {
   await hasFocus(begin);
   await page.keyboard.press('Escape');
   await pallet.waitFor({ state: 'hidden' });
-  assert.equal(await page.locator('#screen-story-trainercreate').getAttribute('inert'), null);
   await activate(page, page.locator('#modal-game-alert button'));
+  assert.equal(await page.locator('#screen-story-trainercreate').getAttribute('inert'), null);
 }
 
 async function verifyRivalIntro(page) {
@@ -156,6 +156,22 @@ async function verifyCollection(page) {
   await hasFocus(trigger);
 }
 
+async function verifyPresetKeys(page) {
+  const main = page.locator('#screen-menu');
+  await activate(page, main.locator('#menu-more-play-summary'));
+  await activate(page, main.getByRole('button', { name: 'Battle options', exact: true }));
+  const presets = main.getByRole('radiogroup', { name: 'Battle options preset' });
+  const selected = presets.locator('[aria-checked="true"]');
+  await tabTo(page, selected);
+  await page.keyboard.press('Home');
+  await hasFocus(presets.getByRole('radio', { name: 'Casual' }));
+  await page.keyboard.press('ArrowRight');
+  await hasFocus(presets.getByRole('radio', { name: 'Standard' }));
+  assert.deepEqual(await presets.getByRole('radio').evaluateAll(radios =>
+    radios.map(radio => [radio.tabIndex, radio.getAttribute('aria-checked')])),
+  [[-1, 'false'], [0, 'true'], [-1, 'false'], [-1, 'false']]);
+}
+
 async function verifyNotebookAndRecovery(page) {
   const cityNotebook = page.locator('#screen-story-city').getByRole('button', { name: /Trainer’s Notebook/ });
   await activate(page, cityNotebook);
@@ -265,9 +281,8 @@ async function verifyFreshRecovery(backup) {
     assert.ok(restoreBox.y + restoreBox.height <= page.viewportSize().height);
     await activate(page, restore.getByRole('button', { name: 'Cancel' }));
     await restore.waitFor({ state: 'hidden' });
-    const recoveryButton = page.getByRole('button', { name: 'Save & recovery' });
-    await hasFocus(recoveryButton);
-    await activate(page, recoveryButton);
+    const importControl = recovery.getByLabel('Import a backup file');
+    await hasFocus(importControl);
     await recovery.getByLabel('Import a backup file').setInputFiles({ name: 'key-scout.json', mimeType: 'application/json', buffer: backup });
     await Promise.all([
       page.waitForEvent('framenavigated', { predicate: frame => frame === page.mainFrame() }),
@@ -333,6 +348,7 @@ try {
         }), 'The offline shortcut should fit in the initial laptop title view');
       }
       await verifyPreferencesAndHistory(page);
+      await verifyPresetKeys(page);
       await verifyCollection(page);
       await verifyOpening(page);
       const backup = await verifyNotebookAndRecovery(page);

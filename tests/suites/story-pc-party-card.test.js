@@ -24,7 +24,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadEngine } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine } from '../helpers/load-engine.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const GOLD_PATH = path.join(HERE, 'story-pc-party-card.golden.json');
@@ -32,6 +32,7 @@ const UPDATE = !!process.env.UPDATE_GOLDEN;
 
 const eng = await loadEngine();
 const w = eng.window;
+installWritableStorage(w);
 const ST = w.__storyTest;
 const doc = w.document;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -170,6 +171,7 @@ test('summary skips eggs and keeps training and reorder actions on the selected 
   w.StoryMode.summaryMove(-1);
   assert.equal(ST.sm.team[1].id, 'partner-b');
   assert.equal(ST.sm.team[2].id, 'mystery-egg');
+  assert.deepEqual(JSON.parse(w.localStorage.getItem('pbs_story_save')).team[1].build.evTrainFocus, ['spe']);
 });
 
 test('defensive matchups group zero damage as immunity', () => {

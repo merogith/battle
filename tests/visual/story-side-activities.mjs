@@ -53,6 +53,23 @@ const safSession = async page => (await live(page, 'safari')).safari.session;
 const action = (page, name) => page.locator(`#screen-story-city [data-action-key="${name}"]`);
 const confirmButton = (page, name) => page.locator('#modal-game-confirm').getByRole('button', { name, exact: true });
 
+async function denyStoryWrite(page, check) {
+  const original = await page.evaluateHandle(() => Storage.prototype.setItem);
+  try {
+    await page.evaluate(() => {
+      const setItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (key === 'pbs_story_save') throw new DOMException('Read-only test save', 'QuotaExceededError');
+        return setItem.call(this, key, value);
+      };
+    });
+    await check();
+  } finally {
+    await page.evaluate(setItem => { Storage.prototype.setItem = setItem; }, original);
+    await original.dispose();
+  }
+}
+
 async function caseRun(name, viewport, run, reducedMotion = 'reduce') {
   if (process.env.BATTLE_SIDE_PHASE && process.env.BATTLE_SIDE_PHASE !== name) return;
   const context = await browser.newContext({ viewport, reducedMotion, serviceWorkers: 'block' });
@@ -113,7 +130,18 @@ try {
     await catchScreen.getByRole('button', { name: /Next encounter|Skip/ }).click();
     await advance(page, paidSafari(page));
     assert.equal((await safSession(page)).encountersUsed, beforeSkip.encountersUsed + 1);
-    await catchScreen.getByRole('button', { name: /Leave Safari/ }).click();
+    const leave = catchScreen.getByRole('button', { name: /Leave Safari/ });
+    const beforeExit = await safSession(page);
+    const exitReceipt = page.getByRole('dialog').filter({ hasText: /warden takes back your unused Safari Balls/i });
+    await denyStoryWrite(page, async () => {
+      await leave.click();
+      assert.equal(await leave.isVisible(), true, 'the current Safari encounter is still playable');
+      assert.equal(await exitReceipt.isVisible(), false, 'a denied leave does not announce a completed visit');
+      assert.deepEqual(await safSession(page), beforeExit);
+      await record(page, 'safari-leave-write-denied');
+    });
+    await leave.click();
+    await exitReceipt.waitFor();
     await advance(page, action(page, 'safari'));
     await reloadAndContinue(page);
     await advance(page, action(page, 'safari'));
@@ -336,7 +364,27 @@ try {
     assert.equal(await picks.first().evaluate(button => button === document.activeElement), true);
     await picks.nth(1).click();
     await picks.nth(2).click();
-    await picker.locator('#pits-start-btn').click();
+    const start = picker.locator('#pits-start-btn');
+    const runBeforeDraft = await page.evaluate(() => {
+      const run = window.StoryMode.state;
+      run.team[0].currentHp = 1;
+      run.team[0].status = 'Burned';
+      return { team: run.team, rng: run._strngState, picks: run.pits._pendingPicks, save: localStorage.getItem('pbs_story_save') };
+    });
+    await denyStoryWrite(page, async () => {
+      await start.click();
+      assert.equal(await picker.isVisible(), true, 'a denied bracket setup leaves roster selection open');
+      assert.equal(await start.evaluate(button => button === document.activeElement), true);
+      assert.equal(await picker.getByRole('status').getByText(/fighters are still here/i).isVisible(), true);
+      const afterDenied = await live(page, 'team', '_strngState', 'pits');
+      assert.deepEqual(afterDenied.team, runBeforeDraft.team, 'the uncommitted heal was rolled back');
+      assert.equal(afterDenied._strngState, runBeforeDraft.rng, 'the uncommitted opponent roll did not advance RNG');
+      assert.deepEqual(afterDenied.pits._pendingPicks, runBeforeDraft.picks);
+      assert.equal(afterDenied.pits._activePickIds, undefined);
+      assert.equal(await page.evaluate(() => localStorage.getItem('pbs_story_save')), runBeforeDraft.save);
+      await record(page, 'fight-club-draft-write-denied');
+    });
+    await start.click();
     const draft = page.locator('#story-pits-draft-overlay');
     const house = draft.getByRole('list', { name: 'House team' });
     const reserves = draft.getByRole('list', { name: 'House reserves' });
@@ -375,6 +423,17 @@ try {
     await record(page, 'fight-club-forfeit-warning');
     await confirmButton(page, 'Cancel').click();
     assert.equal((await live(page, 'pits')).pits._activePickIds.length, 3);
+    const beforeFailure = await page.evaluate(() => localStorage.getItem('pbs_story_save'));
+    await forfeit.click();
+    await denyStoryWrite(page, async () => {
+      await confirmButton(page, 'OK').click();
+      await page.locator('#pits-forfeit-status').getByText(/fighters are still here/).waitFor();
+      assert.equal(await forfeit.evaluate(button => button === document.activeElement), true);
+      assert.equal(await page.evaluate(() => localStorage.getItem('pbs_story_save')), beforeFailure);
+      assert.equal((await live(page, 'pits')).pits._activePickIds.length, 3);
+      assert.equal((await live(page, 'memorial')).memorial?.totalFallen || 0, 0);
+      await record(page, 'fight-club-forfeit-write-denied');
+    });
     await forfeit.click();
     await confirmButton(page, 'OK').click();
     await alert.getByText(/joined your party from the PC/).waitFor();
@@ -391,6 +450,18 @@ try {
     await advance(page, club);
     assert.equal((await live(page, 'eventIndex')).eventIndex, saved.eventIndex);
     await record(page, 'crucible-resumed-after-rematch');
+
+    const safari = hub.getByRole('button', { name: /Safari Zone/ });
+    await safari.click();
+    await advance(page, paidSafari(page));
+    const leaveSafari = page.locator('#screen-story-catch').getByRole('button', { name: /Leave Safari/ });
+    await leaveSafari.click();
+    await alert.getByText(/warden takes back your unused Safari Balls/i).waitFor();
+    assert.equal(await safSession(page), undefined);
+    await record(page, 'crucible-safari-exit');
+    await alert.getByRole('button', { name: 'OK' }).click();
+    await advance(page, safari);
+
     await hub.getByRole('button', { name: /Save and quit to Story menu/ }).click();
     await page.locator('.story-menu-btn--collection').click();
     await page.getByRole('tab', { name: 'Memorial' }).click();

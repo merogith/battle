@@ -5,9 +5,10 @@
 // scale only waives the gold cost of an IN-stage teach.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, installWritableStorage } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
+installWritableStorage(eng.window);
 const ST = eng.window.__storyTest;
 
 function primeAtCity(city, scales) {

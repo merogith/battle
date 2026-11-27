@@ -1,6 +1,9 @@
 import { ArenaBattleClient } from './arena-client.js';
+import '../data/game-storage.js';
 
-const client = new ArenaBattleClient();
+const client = new ArenaBattleClient(error => {
+  if (view && view.phase !== 'ended') showArenaSetup(error.message);
+});
 const $ = id => document.getElementById(id);
 const statusNames = { brn: 'Burned', frz: 'Frozen', par: 'Paralyzed', psn: 'Poisoned', tox: 'Badly poisoned', slp: 'Asleep' };
 const matchMessages = {
@@ -24,24 +27,33 @@ let followBattleLog = true;
 const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
 const pacing = { normal: 1, fast: .5, instant: 0 };
 const motionBreaks = new Set(['move', 'switch', 'drag', 'replace', 'cant', 'turn', 'win', 'tie']);
-const settingsKey = 'pbs_settings';
-
-function sharedSettings() {
-  try { return JSON.parse(localStorage.getItem(settingsKey) || '{}') || {}; }
-  catch { return {}; }
-}
-
+const { settingsKey, accessibilityKey, readRecord, updateRecord } = window.GameStorage;
 const speed = $('arena-speed');
-const initialSettings = sharedSettings();
-speed.value = Object.hasOwn(pacing, initialSettings.battleSpeed) ? initialSettings.battleSpeed : 'normal';
-const motionRate = () => document.hidden || motionPreference.matches || initialSettings.animations === false ? 0 : pacing[speed.value];
+let animate = true;
+let reduceMotion = false;
+const motionRate = () => document.hidden || motionPreference.matches || reduceMotion || !animate ? 0 : pacing[speed.value];
 const stopMotion = () => activeMotion?.stop();
+function refreshMotionPreference() {
+  const playMotion = motionRate() > 0;
+  $('match').dataset.motion = String(playMotion);
+  if (!playMotion) stopMotion();
+}
+function applyStoredPresentation() {
+  const { battleSpeed, animations } = readRecord(settingsKey);
+  animate = animations !== false;
+  reduceMotion = readRecord(accessibilityKey).reducedMotion === true;
+  speed.value = Object.hasOwn(pacing, battleSpeed) ? battleSpeed : 'normal';
+  refreshMotionPreference();
+}
+applyStoredPresentation();
 speed.addEventListener('change', () => {
-  try { localStorage.setItem(settingsKey, JSON.stringify({ ...sharedSettings(), battleSpeed: speed.value })); }
-  catch { /* Settings remain usable for this session. */ }
-  if (!motionRate()) stopMotion();
+  updateRecord(settingsKey, { battleSpeed: speed.value });
+  refreshMotionPreference();
 });
-motionPreference.addEventListener('change', () => { if (!motionRate()) stopMotion(); });
+window.addEventListener('storage', event => {
+  if (event.key === settingsKey || event.key === accessibilityKey || event.key === null) applyStoredPresentation();
+});
+motionPreference.addEventListener('change', refreshMotionPreference);
 $('arena-skip-motion').addEventListener('click', stopMotion);
 window.addEventListener('pagehide', stopMotion);
 
@@ -386,11 +398,12 @@ function draw(next, focus = true) {
 async function choose(action) {
   if (busy) return;
   const owner = matchEpoch;
+  const enabled = [...$('actions').querySelectorAll('.action-button:not(:disabled)')];
   busy = true;
   $('actions').setAttribute('aria-busy', 'true');
   $('battle-form-toggle').disabled = true;
   $('inspect-moves').disabled = true;
-  $('actions').querySelectorAll('.action-button').forEach(button => { button.disabled = true; });
+  enabled.forEach(button => { button.disabled = true; });
   $('reset').disabled = true;
   try {
     const next = await client.choose(action);
@@ -400,8 +413,10 @@ async function choose(action) {
     if (owner === matchEpoch) draw(next);
   } catch (error) {
     if (owner !== matchEpoch) return;
-    draw(view, false);
     announceError('battle-error', error.message);
+    $('battle-form-toggle').disabled = false;
+    enabled.forEach(button => { button.disabled = false; });
+    enabled.find(button => button.dataset.kind === action.kind && Number(button.dataset.slot) === action.slot)?.focus({ preventScroll: true });
   } finally {
     if (owner === matchEpoch) unlockActions();
   }
@@ -502,8 +517,7 @@ $('download-replay').addEventListener('click', () => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
-function reset() {
-  if (busy && !activeMotion) return;
+function showArenaSetup(message = '') {
   matchEpoch++;
   stopMotion();
   activeMotion = null;
@@ -517,8 +531,12 @@ function reset() {
   $('setup').hidden = false;
   $('match').hidden = true;
   announceTeamError();
-  announceError('setup-error');
+  announceError('setup-error', message);
   $('start').focus();
+}
+
+function reset() {
+  if (!busy || activeMotion) showArenaSetup();
 }
 $('reset').addEventListener('click', reset);
 $('play-again').addEventListener('click', reset);

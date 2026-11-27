@@ -323,6 +323,34 @@ async function testSixOnSix(page) {
   }
 }
 
+async function testAllOuFormats(page) {
+  for (let generation = 1; generation <= 9; generation++) {
+    const format = `gen${generation}ou`;
+    for (const size of [3, 6]) {
+      await page.getByLabel('Battle rules').selectOption(format);
+      await page.getByLabel('Team size', { exact: true }).selectOption(String(size));
+      await page.getByRole('button', { name: 'Start battle', exact: true }).click();
+      if (generation >= 5) await page.locator('#switches button:enabled').first().click();
+      await atTurn(page, 1);
+      assert.equal(await page.locator('#player-team li').count(), size);
+      assert.equal(await page.locator('#opponent-team li').count(), size);
+      assert.match(await page.locator('#format-label').innerText(), new RegExp(`Gen ${generation} OU`));
+      await page.locator('#moves button:enabled').first().click();
+      await finishBattle(page);
+      assert.ok(['win', 'loss', 'draw'].includes(await page.locator('#match').getAttribute('data-result')));
+      const replay = await downloadReplay(page, '-matrix', format, size);
+      for (const side of ['p1', 'p2']) {
+        const prefix = `>player ${side} `;
+        const team = Teams.unpack(JSON.parse(replay.inputLog.find(line => line.startsWith(prefix)).slice(prefix.length)).team);
+        assert.equal(team.length, size);
+      }
+      await page.getByRole('button', { name: 'New battle', exact: true }).click();
+      console.log(`${format} ${size}-on-${size}: opened, played to a verified result, and exported both teams in the replay`);
+    }
+  }
+  await page.getByLabel('Team size', { exact: true }).selectOption('3');
+}
+
 try {
   for (const { name, width, height, touch } of sizes) {
     const context = await browser.newContext({ viewport: { width, height }, isMobile: touch, hasTouch: touch, serviceWorkers: 'block', reducedMotion: 'reduce' });
@@ -431,7 +459,8 @@ try {
       await downloadReplay(page);
       await context.setOffline(false);
       await page.getByRole('button', { name: 'New battle' }).click();
-      for (let gen = 1; gen <= 8; gen++) {
+      if (process.env.BATTLE_ARENA_COMPLETE_FORMATS === '1') await testAllOuFormats(page);
+      else for (let gen = 1; gen <= 8; gen++) {
         await page.getByLabel('Battle rules').selectOption(`gen${gen}ou`);
         await page.getByRole('button', { name: 'Start battle' }).click();
         if (gen >= 5) await page.getByRole('button', { name: /Snorlax.*Lead/ }).click();
@@ -469,7 +498,8 @@ try {
     await page.locator('#menu-offline-entry').click();
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 120000 });
     await page.locator('#modal-settings').getByRole('button', { name: 'Close settings' }).click();
-    assert.equal(await page.evaluate(async url => Boolean(await caches.match(url)), workerUrl), false);
+    assert.equal(await page.evaluate(async url => Boolean(await caches.match(url)), workerUrl), true,
+      'the small Arena worker entry is part of the installed shell');
     await context.setOffline(true);
     const classicExports = await page.evaluate(async url => Object.keys(await import(url)), classicUrl);
     assert.ok(classicExports.length > 0, 'fresh offline shell can import the battle adapter');
@@ -489,25 +519,13 @@ try {
       await waitForOfflineTurn();
     }
     assert.ok(await page.evaluate(() => state.turnNumber > 0 || state.isOver));
-    await context.setOffline(false);
-    await page.goto(base.href, { waitUntil: 'domcontentloaded' });
     await fromTitle(page);
-    await page.getByRole('button', { name: 'Start battle' }).click();
-    await page.getByRole('heading', { name: 'Choose your lead' }).waitFor();
-    let workerCached = false;
-    for (let attempt = 0; attempt < 50 && !workerCached; attempt++) {
-      workerCached = await page.evaluate(async url => Boolean(await caches.match(url)), workerUrl);
-      if (!workerCached) await delay(100);
-    }
-    assert.ok(workerCached, 'the Arena worker is available before going offline');
-    await context.setOffline(true);
-    await page.reload({ waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: 'Start battle' }).click();
     await page.getByRole('heading', { name: 'Choose your lead' }).waitFor();
     await page.getByRole('button', { name: /Great Tusk.*Lead/ }).click();
     await atTurn(page, 1);
     await context.close();
-    console.log('Installed game: fresh offline Quick Battle turn and cached offline Arena match passed');
+    console.log('Installed game: cold offline Quick Battle and Arena turns passed without a media pack');
   }
 } finally {
   await browser.close();

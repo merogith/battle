@@ -43,6 +43,20 @@ function coldOpenBlock(key) {
 const BENCHES = ['classic_npc_r20', 'classic_npc_r33', 'classic_npc_r48'];
 const OAK_KEPT = ['classic_gym1', 'classic_gym4', 'classic_gym8', 'classic_twist'];
 
+test('generated beat tables remain current without including curated scenes or reward rules', () => {
+  const generated = fs.readFileSync(new URL('../../scripts/build/story-scenes.generated.js', import.meta.url), 'utf8');
+  const match = /^        const MAIN_STORY_BEATS = /m;
+  const start = HTML.match(match)?.index;
+  const end = HTML.indexOf('END generated story beat tables');
+  assert.ok(start != null && end > start);
+  const tables = HTML.slice(start, HTML.lastIndexOf('\n', end)).trimEnd();
+  assert.equal(tables, generated.slice(generated.match(match).index).trimEnd());
+  assert.doesNotMatch(tables, /STORY_SCENES|STORY_REWARD_TIERS/);
+  for (const scene of ['main.mfFirst', 'main.mfFirstReturn', 'main.mfSpare']) {
+    assert.ok(HTML.includes(`"${scene}": {`), `${scene} is still authored in the runtime`);
+  }
+});
+
 test('the three mid-route benches are cast to the recurring Veteran, not Oak', () => {
   for (const key of BENCHES) {
     const b = coldOpenBlock(key);
@@ -72,14 +86,14 @@ test('Oak is retained on his bookends and his one confession', () => {
 
 test('the recurring Veteran escalates stranger → familiar → kinship', () => {
   // appearance 1 — doesn't know you (establishes the recurring visual tell)
-  assert.ok(/six worn Poké Balls/.test(coldOpenBlock('classic_npc_r20')),
-    'r20: establishes the Veteran with his recurring "six worn Poké Balls" tell');
+  assert.match(coldOpenBlock('classic_npc_r20'), /six worn Poké Balls.*green thread/i,
+    'r20: the Veteran introduces the repaired glove while he makes room on the bench');
   // appearance 2 — starting to place you
-  assert.ok(/came past me a couple gyms back/.test(coldOpenBlock('classic_npc_r33')),
-    'r33: the Veteran half-recognizes the player');
+  assert.match(coldOpenBlock('classic_npc_r33'), /green thread[\s\S]*You sat by me/,
+    'r33: the Veteran remembers the bench and puts the player on the safe side of the road');
   // appearance 3 — knows you
-  assert.ok(/stopped betting against you/.test(coldOpenBlock('classic_npc_r48')),
-    'r48: the Veteran greets the player as a known quantity');
+  assert.match(coldOpenBlock('classic_npc_r48'), /green thread[\s\S]*go as far as the window with you/,
+    'r48: the Veteran is waiting and offers to walk with the player');
 });
 
 test('the replaced Oak bench lines are gone (no silent revert)', () => {

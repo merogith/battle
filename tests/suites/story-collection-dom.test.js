@@ -49,15 +49,20 @@ test('actionable trophies lead and locked story spoilers use one disclosure', ()
   assert.doesNotMatch(body.textContent, /Mystery Figure|Mask Removed|Two Ways Forward/);
 });
 
-test('collection a11y: tablist roving tabindex + live panel + pokedex strip live', () => {
+test('collection a11y: roving tabs, stable search and a concise live result count', () => {
   SM.openCollection('pokedex');
   const active = doc.getElementById('collection-tab-pokedex');
   const inactive = doc.getElementById('collection-tab-ach');
   assert.equal(active.getAttribute('tabindex'), '0', 'active tab is in the tab order');
   assert.equal(inactive.getAttribute('tabindex'), '-1', 'inactive tab is removed from the tab order');
   const body = doc.getElementById('collection-body');
-  assert.equal(body.getAttribute('aria-live'), 'polite', 'panel announces tab content changes');
   assert.match(body.getAttribute('aria-label') || '', /pokedex/i, 'panel labels the active tab');
+  const search = body.querySelector('#pdex-search');
+  SM.pokedexSetSearch('#116');
+  assert.equal(body.querySelector('#pdex-search'), search, 'search stays mounted when results change');
+  const result = body.querySelector('[role="status"]');
+  assert.equal(result.textContent, '1 entry');
+  SM.pokedexSetSearch('');
   // ISSUE-126: the Pokédex seen/caught strip in the PC screen is now a live region.
   const strip = doc.getElementById('story-pc-pokedex-strip');
   assert.ok(strip, 'pokedex strip exists');

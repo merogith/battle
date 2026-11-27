@@ -73,6 +73,8 @@ export async function loadEngine() {
     runScripts: 'dangerously',
     pretendToBeVisual: true,
     beforeParse(window) {
+      // jsdom skips external scripts. The Classic shell's shared storage contract is required.
+      window.eval(readFileSync(join(ROOT, 'data/game-storage.js'), 'utf8'));
       // Mark the test harness so the bottom-of-script hook exposes window.__engine.
       window.__testHarness = true;
 

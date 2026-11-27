@@ -5,9 +5,10 @@
 // the bar showed 2,500 for a Learnt move.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
+import { loadEngine, openTutorMon, installWritableStorage } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
+installWritableStorage(eng.window);
 const w = eng.window;
 const ST = w.__storyTest;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

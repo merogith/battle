@@ -31,6 +31,7 @@ function loadGameWindow() {
     pretendToBeVisual: true,
     virtualConsole: vc,
     beforeParse(window) {
+      window.eval(fs.readFileSync(path.join(ROOT, 'data/game-storage.js'), 'utf8'));
       // Browser API polyfills jsdom lacks
       window.matchMedia = (q) => ({
         matches: false, addListener: () => {}, removeListener: () => {},

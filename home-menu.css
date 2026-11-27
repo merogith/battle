@@ -1,14 +1,27 @@
+/* Shared screen and control colors. Local art, type and status colors stay in their views. */
+:root {
+    --game-font: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --game-text: #f5f1e8;
+    --game-muted: #c2c6cf;
+    --game-deep: #111720;
+    --game-panel: #171e27;
+    --game-control: #202c3a;
+    --game-hover: #2d3b4b;
+    --game-line: #465462;
+    --game-control-line: #6e8093;
+    --game-gold: #f4cf87;
+    --game-gold-hover: #ffe3ab;
+    --game-on-gold: #291d0d;
+    --game-radius: 7px;
+    --game-touch: 44px;
+}
+
 /* The lightweight launch page and the in-game home use the same layout. */
 .home-screen {
-    --home-ink: #f5f1e8;
-    --home-quiet: #c2c6cf;
-    --home-line: #52606c;
-    --home-panel: #171e27;
-    --home-accent: #f4cf87;
     background: linear-gradient(115deg, #10151def 10%, #10151d9c 62%, #10151de8),
         #111720 url('sprites/backgrounds/menu/menu_bg_dark.webp') center / cover no-repeat;
-    color: var(--home-ink);
-    font: 16px/1.35 system-ui, sans-serif;
+    color: var(--game-text);
+    font: 16px/1.35 var(--game-font);
 }
 body.home-screen,
 body #screen-menu.home-screen:not(.hidden),
@@ -25,14 +38,14 @@ body.is-mobile #screen-menu.home-screen:not(.hidden) {
 .home-menu h1, #screen-menu .home-menu h1 {
     margin: 0;
     padding: 0;
-    font: 790 clamp(2rem, 6.3vw, 4.5rem)/1.02 system-ui, sans-serif;
+    font: 790 clamp(2rem, 6.3vw, 4.5rem)/1.02 var(--game-font);
     letter-spacing: -.045em;
     overflow-wrap: anywhere;
     word-break: normal;
-    color: var(--home-ink);
+    color: var(--game-text);
 }
-.home-menu h1 span { color: var(--home-accent); }
-.home-menu .game-version { margin: 7px 0 clamp(15px, 3.6vh, 25px); color: var(--home-quiet); font-size: .875rem; }
+.home-menu h1 span { color: var(--game-gold); }
+.home-menu .game-version { margin: 7px 0 clamp(15px, 3.6vh, 25px); color: var(--game-muted); font-size: .875rem; }
 .home-actions, .home-modes, .home-friend-actions { display: grid; gap: 7px; }
 .home-actions { grid-template-columns: repeat(auto-fit, minmax(min(100%, 138px), 1fr)); }
 .home-modes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -43,15 +56,15 @@ body.is-mobile #screen-menu.home-screen:not(.hidden) {
 .home-menu :is(.home-choice, .home-disclosure > summary) {
     box-sizing: border-box;
     min-width: 0;
-    min-height: 44px;
+    min-height: var(--game-touch);
     display: grid;
     align-content: center;
     padding: 8px 12px;
-    border: 1px solid var(--home-line);
-    border-radius: 7px;
-    background: var(--home-panel);
-    color: var(--home-ink);
-    font: 660 .9375rem/1.25 system-ui, sans-serif !important;
+    border: 1px solid var(--game-control-line);
+    border-radius: var(--game-radius);
+    background: var(--game-panel);
+    color: var(--game-text);
+    font: 660 .9375rem/1.25 var(--game-font) !important;
     letter-spacing: normal;
     text-transform: none;
     text-decoration: none;
@@ -60,15 +73,15 @@ body.is-mobile #screen-menu.home-screen:not(.hidden) {
     text-align: start;
     cursor: pointer;
 }
-.home-menu :is(.home-choice, .home-disclosure > summary):hover { border-color: var(--home-accent); }
+.home-menu :is(.home-choice, .home-disclosure > summary):hover { border-color: var(--game-gold); }
 .home-menu .home-choice[hidden] { display: none; }
 .home-menu .home-choice.home-primary {
-    background: var(--home-accent);
+    background: var(--game-gold);
     color: #291d0d;
-    border-color: var(--home-accent);
+    border-color: var(--game-gold);
     min-height: 50px;
 }
-.home-menu .home-choice small { margin-top: 3px; color: var(--home-quiet); font-size: .75rem; font-weight: 500; overflow-wrap: anywhere; }
+.home-menu .home-choice small { margin-top: 3px; color: var(--game-muted); font-size: .75rem; font-weight: 500; overflow-wrap: anywhere; }
 .home-menu .home-choice.home-primary small { color: inherit; }
 .home-battles { margin-block: 8px; }
 .home-menu .home-disclosure > summary { position: relative; padding-inline-end: 34px; }
@@ -88,33 +101,33 @@ body.is-mobile #screen-menu.home-screen:not(.hidden) {
 .home-battles .home-modes { margin-top: 7px; }
 .home-friend-actions { grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr)); margin-top: 7px; }
 .home-friends { grid-column: 1 / -1; }
-.home-friends > p { margin: 5px 0 0; font-size: .8125rem; color: var(--home-quiet); }
+.home-friends > p { margin: 5px 0 0; font-size: .8125rem; color: var(--game-muted); }
 .home-menu .home-tool {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    min-height: 44px;
+    min-height: var(--game-touch);
     padding: 5px 2px;
     background: none;
     border: 0;
     text-decoration: underline;
     text-underline-offset: 3px;
     box-shadow: none;
-    color: var(--home-quiet);
-    font: 600 .8125rem/1.25 system-ui, sans-serif !important;
+    color: var(--game-muted);
+    font: 600 .8125rem/1.25 var(--game-font) !important;
     cursor: pointer;
 }
-.home-menu .home-tool:hover { color: var(--home-accent); }
+.home-menu .home-tool:hover { color: var(--game-gold); }
 .home-menu .home-tool[hidden] { display: none; }
 .home-tools { display: flex; flex-wrap: wrap; align-items: center; column-gap: 16px; }
 .home-tools .menu-offline-entry { position: static; }
 .home-tools .menu-offline-entry-sub { display: none; }
-.home-status:not(:empty) { margin: 3px 0 0; font: .8125rem/1.4 system-ui, sans-serif; color: var(--home-quiet); }
+.home-status:not(:empty) { margin: 3px 0 0; font: .8125rem/1.4 var(--game-font); color: var(--game-muted); }
 .home-status:empty { display: none; }
-.home-menu :is(a, button, summary):focus-visible { outline: 2px solid var(--home-accent); outline-offset: 2px; }
+.home-menu :is(a, button, summary):focus-visible { outline: 2px solid var(--game-gold); outline-offset: 2px; }
 .home-menu #menu-customize-panel {
     width: 100%; max-width: none; margin: 0 0 6px;
-    padding: 10px !important; background: var(--home-panel); box-shadow: none; border-radius: 7px !important;
+    padding: 10px !important; background: var(--game-panel); box-shadow: none; border-radius: var(--game-radius) !important;
 }
 #game-stage:has(> #screen-menu:not(.hidden)) > .settings-btn { display: none; }
 @media (orientation: landscape) and (max-height: 420px) {
@@ -125,5 +138,5 @@ body.is-mobile #screen-menu.home-screen:not(.hidden) {
 #screen-story-menu .story-resume-card-status:empty { display: none; }
 #screen-story-menu .story-run-tools { color: var(--text-dim); }
 #screen-story-menu .story-run-tools[hidden] { display: none; }
-#screen-story-menu .story-run-tools > summary { min-height: 44px; padding: 12px 4px; cursor: pointer; }
+#screen-story-menu .story-run-tools > summary { min-height: var(--game-touch); padding: 12px 4px; cursor: pointer; }
 #screen-story-menu .story-run-tools .story-menu-btn { margin-block-start: 4px; }

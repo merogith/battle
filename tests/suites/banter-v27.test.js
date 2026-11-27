@@ -143,6 +143,7 @@ test('exchange offered on regular trainers/gym/rival; never on league/marquee ro
 
 // ── Recording + the battle multiplier ────────────────────────────────────────
 test('recordExchange stamps the row, bumps the track, recomputes persona; mult follows', () => {
+  installLocalStorageShim();
   const i = SER.findIndex(r => Array.isArray(r) && r[1] === 'Battle' && String(r[2]) === 'Basic Trainer');
   const rowId = SER[i][0] | 0;
   freshSm({ eventIndex: i });

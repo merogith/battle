@@ -99,6 +99,112 @@
     background: linear-gradient(180deg, rgb(7 15 17 / .16), rgb(7 15 17 / .62) 48%, rgb(7 15 17 / .93));
 }
 
+.world-scene[data-activity-backdrop]::after {
+    background: linear-gradient(180deg, rgb(8 13 18 / var(--activity-shade-top)), rgb(8 13 18 / var(--activity-shade-bottom)));
+}
+
+.story-side-scene {
+    position: fixed;
+    inset: 0;
+    z-index: var(--sn-z-overlay);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: safe center;
+    padding: clamp(10px, 3vw, 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.story-side-scene .story-scene-content {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    width: min(100%, 34rem);
+    gap: 10px;
+}
+
+.story-side-scene .story-scene-card {
+    width: 100%;
+    padding: clamp(12px, 4vw, 22px);
+    border: 1px solid #566360;
+    border-radius: 12px;
+    background: #181e20;
+    color: #f5eee2;
+    font: 400 .9375rem/1.5 system-ui, sans-serif;
+    box-shadow: 0 14px 36px rgb(0 0 0 / .55);
+}
+
+.story-side-scene .story-scene-title { color: var(--scene-accent, #f5eee2); margin-bottom: 8px; }
+.story-side-scene .story-scene-title h2 { margin: 0; font: 700 1.15rem/1.2 system-ui, sans-serif; }
+.story-side-scene-footer { display: flex; justify-content: flex-end; margin-top: 12px; }
+
+.story-side-scene .story-scene-card button {
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid #666e68;
+    border-radius: 6px;
+    background: #242d2e;
+    color: #fcf4e5;
+    font: 650 .875rem/1.25 system-ui, sans-serif;
+    cursor: pointer;
+}
+
+.story-side-scene [data-scene-opt] { width: 100%; margin-top: 6px; text-align: left; }
+.story-side-scene .story-scene-card .story-scene-primary { background: #edd39b; color: #261e17; border-color: #edd39b; }
+.story-side-scene .story-scene-card [data-scene-danger] { border-color: #b96766; color: #ffb8ae; }
+.story-side-scene .story-scene-card button:focus-visible { outline: 2px solid #fbda89; outline-offset: 2px; }
+.story-victory-receipt summary { cursor: pointer; padding: 12px 8px; }
+.story-victory-receipt[open] .story-victory-v2-rewards { padding-bottom: 8px; }
+
+.story-mystery-defeat {
+    position: fixed;
+    inset: 0;
+    z-index: var(--sn-z-overlay);
+    display: grid;
+    place-items: safe center;
+    padding: clamp(10px, 3vw, 24px);
+    overflow: auto;
+    background: #121019;
+}
+
+.story-mystery-defeat-card {
+    width: min(100%, 32rem);
+    box-sizing: border-box;
+    padding: clamp(16px, 4vw, 24px);
+    border: 1px solid #6a617d;
+    border-radius: 12px;
+    background: #1b1923;
+    color: #f5eee2;
+    font: 400 1rem/1.5 system-ui, sans-serif;
+    box-shadow: 0 16px 40px rgb(0 0 0 / .6);
+}
+
+.story-mystery-defeat-card h2 { margin: 0; font: 700 1.3rem/1.2 system-ui, sans-serif; }
+.story-mystery-defeat-card p { margin: 12px 0 0; }
+.story-mystery-defeat-card p + p { color: #c7c0d0; }
+.story-mystery-defeat-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.story-mystery-defeat-actions button {
+    flex: 1 0 9rem;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid #70687e;
+    border-radius: 6px;
+    background: #252230;
+    color: #f5eee2;
+    font: 700 .9rem/1.3 var(--game-font, system-ui, sans-serif) !important;
+    cursor: pointer;
+}
+.story-mystery-defeat-actions .story-scene-primary { background: #edd39b; color: #261e17; }
+
+@media (orientation: landscape) and (max-height: 370px) {
+    .story-mystery-defeat { padding: 10px; }
+    .story-mystery-defeat-card { padding: 12px 16px; }
+    .story-mystery-defeat-card p { margin-top: 8px; }
+    .story-mystery-defeat-actions { margin-top: 10px; }
+}
+
 #screen-story-city #story-city-bg-layer {
     background: linear-gradient(160deg, #182b28, #0e1a1a 55%, #091416);
 }
@@ -152,20 +258,8 @@
     background: rgb(9 19 18 / .44);
 }
 
-#screen-story-city #story-hud-run,
-#screen-story-city .story-city-identity-badges,
-#screen-story-city .story-city-route,
-#screen-story-city .story-city-objective .obj-kicker {
-    display: none;
-}
+#screen-story-city #story-city-tips .story-city-objective { min-height: 48px; }
 
-#screen-story-city #story-city-tips .story-city-objective {
-    grid-template-areas: "icon label go";
-    grid-template-rows: auto;
-    min-height: 48px;
-}
-
-#screen-story-city .story-city-objective .obj-label { align-self: center; }
 #screen-story-city .story-city-guide summary span {
     font: inherit !important;
     letter-spacing: normal;
@@ -554,6 +648,13 @@
     border: 1px solid #63776c;
     border-radius: 10px;
     overflow: hidden;
+}
+
+.world-crucible-tools {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
 }
 
 #screen-story-crucible .world-crucible-vista button {

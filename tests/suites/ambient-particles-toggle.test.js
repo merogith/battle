@@ -37,6 +37,6 @@ test('applySettingSwitch has an ambientParticles branch that persists + applies 
   assert.ok(i !== -1, 'applySettingSwitch must handle the ambientParticles key');
   const branch = HTML.slice(i, i + 500);
   assert.ok(/settings\.ambientParticles\s*=\s*on/.test(branch), 'branch must set the setting');
-  assert.ok(/persistMiscSettings\(\)/.test(branch), 'branch must persist');
+  assert.ok(/persistMiscSettings\('ambientParticles'\)/.test(branch), 'branch must persist its own preference');
   assert.ok(/FxParticles\.clearAll\(\)/.test(branch), 'branch must tear down the live layer on disable');
 });

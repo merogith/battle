@@ -78,7 +78,10 @@ async function capture(step, extra = {}) {
 }
 
 async function boot() {
-    await page.goto(url.href, { waitUntil: 'domcontentloaded' });
+    const load = { waitUntil: 'domcontentloaded' };
+    if (page.url() === url.href) await page.reload(load);
+    else await page.goto(url.href, load);
+    await waitForChapterClose();
     await page.locator('.menu-btn-quickplay--story').waitFor();
     await page.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 25000 });
 }
@@ -322,6 +325,8 @@ try {
     assert.equal(await control('pick').count(), 0);
     await capture('chapter-1-saved-reply');
     const beforeReadAgain = await progress();
+    assert.equal(await control('read').isVisible(), false, 'The first outcome keeps replay in its receipt');
+    await modal().getByText('What changed', { exact: true }).tap();
     await control('read').tap();
     checkPanels('chapter-1', await readPanels());
     assert.equal(await control('pick').count(), 0, 'Reading a committed scene cannot change its answer');

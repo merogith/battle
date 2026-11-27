@@ -58,6 +58,7 @@ async function boot() {
     runScripts: 'dangerously',
     pretendToBeVisual: true,
     beforeParse(window) {
+      window.eval(readFileSync(join(ROOT, 'data/game-storage.js'), 'utf8'));
       window.__testHarness = true;
       window.__victoryInputArmMs = 0; // P0.1 buffered-input guard: off under the harness
       window.__vsInputArmMs = 0;      // P2a VS-intro buttons: same

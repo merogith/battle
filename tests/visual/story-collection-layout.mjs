@@ -99,9 +99,11 @@ try {
         assert.equal(await generation.inputValue(), '1');
         await activate(panel.getByRole('button', { name: 'Regular', exact: true }));
         const search = panel.getByRole('searchbox', { name: 'Search Pokédex by name or number' });
+        const originalSearch = await search.elementHandle();
         await search.fill('#116');
         assert.equal(await panel.locator('.pdex-grid .pdex-cell').count(), 1);
         await search.fill('horse');
+        assert.equal(await originalSearch.evaluate(element => element === document.activeElement && element.isConnected), true);
         assert.equal(await search.evaluate(el => el === document.activeElement && el.selectionStart === 5), true);
         await activate(panel.getByRole('button', { name: 'Horsea — caught', exact: true }));
         await panel.getByRole('heading', { name: 'Horsea', exact: true }).waitFor();

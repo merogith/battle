@@ -294,7 +294,7 @@ try {
     state.mode = 'pve';
     state.p1Draft = [
       { name: 'Scizor', build: { a: 'Technician', m: ['Bullet Punch'] } },
-      { name: 'Meowth-Galar', build: { a: 'Pickup', m: ['Iron Head'] } },
+      { name: 'Meowth-Galar', build: { a: 'Pickup', m: ['Iron Head'], _isShiny: false } },
     ];
     state.p2Draft = [{ name: 'Blissey', build: { a: 'Natural Cure', m: ['Seismic Toss'] } }];
     await window.startBattle();
@@ -310,6 +310,10 @@ try {
   assert.equal(await classicSprite.isVisible(), false, 'the compatibility engine hides a faint even with animations off');
   await partySlot('Meowth-Galar').getByRole('button', { name: 'Switch' }).tap();
   await classicSprite.waitFor();
+  await page.waitForFunction(() => {
+    const sprite = document.getElementById('player-sprite');
+    return sprite?.naturalWidth > 0 && /\/gen5ani\/meowth-galar\.gif$/.test(sprite.currentSrc);
+  });
   assert.match(await classicSprite.evaluate(sprite => sprite.currentSrc), /\/gen5ani\/meowth-galar\.gif$/);
   assert.deepEqual(errors, []);
   console.log('The compatibility battle hid its fainted sprite and displayed exact regional front art after a failed back sprite request.');

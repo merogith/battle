@@ -5,9 +5,10 @@
 // Run: node --test tests/suites/story-ev-redistribute.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { loadEngine, installWritableStorage } from '../helpers/load-engine.js';
 
 const E = await loadEngine();
+installWritableStorage(E.window);
 const ST = E.window.__storyTest;
 const SM = E.window.StoryMode;
 const KEYS = ['hp', 'atk', 'def', 'spa', 'spd', 'spe'];

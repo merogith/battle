@@ -13,7 +13,7 @@
  *          --chapters=true --chapter-choice=clue (or listen or act)
  *          --milestone-turns=3 --fight-style=matchup
  *          --difficulty=hard --gens=1,2,4,7,9 --no-items=true
- *          --screenshots=surfaces (keep all trace steps, deduplicate screenshots)
+ *          --screenshots=surfaces (deduplicate) or none (only failures)
  * Env: BATTLE_TEST_URL, BATTLE_TEST_CHROMIUM, PORT
  */
 import assert from 'node:assert/strict';
@@ -76,7 +76,7 @@ if (chapters) coverage.chapters = [];
 if (![seed, width, height, maxIters, realBattles, realTurns, milestoneTurns].every(value => Number.isInteger(value) && value >= 0) ||
     seed > 0xffffffff || !width || !height || !maxIters ||
     !['veryeasy', 'easy', 'normal', 'hard', 'challenge'].includes(difficulty) ||
-    !['all', 'surfaces'].includes(screenshotMode) ||
+    !['all', 'surfaces', 'none'].includes(screenshotMode) ||
     !generations.length || generations.some(value => !Number.isInteger(value) || value < 1 || value > 9) ||
     roadChoices.length !== 9 || roadChoices.some(choice => !roadOptions.includes(choice)) ||
     !['clue', 'listen', 'act'].includes(chapterChoice) || !['first', 'matchup'].includes(fightStyle) ||
@@ -137,7 +137,7 @@ async function capture(page, label, snapshot = null) {
         snapshotBeforeAction.screens, snapshotBeforeAction.dialogs,
     ]);
     let screenshot = null;
-    if (screenshotMode === 'all' || !capturedSurfaces.has(surface)) {
+    if (label === 'blocked' || screenshotMode === 'all' || (screenshotMode === 'surfaces' && !capturedSurfaces.has(surface))) {
         const filename = join(shotsDir, `${index}-${slug || 'step'}.png`);
         await page.screenshot({ path: filename, animations: 'disabled', timeout: 15000 });
         screenshot = relative(outDir, filename);
@@ -177,7 +177,7 @@ function button(page, scope, name) {
 
 async function click(page, match, label, snapshot = null) {
     if (!await match.isVisible()) return false;
-    try { await match.click({ trial: true, timeout: 2000 }); }
+    try { await match.click({ trial: true, timeout: 6500 }); }
     catch (error) {
         if (error.name !== 'TimeoutError') throw error;
         return false;
@@ -320,16 +320,19 @@ async function main() {
         if (difficulty !== 'normal') {
             await page.locator(`.story-create-diff-card[data-diff="${difficulty}"]`).click();
         }
+        const seedInput = page.locator('#story-create-seed');
+        const supportsSeedField = (await seedInput.count()) > 0;
+        if (generations.length !== 9 || supportsSeedField || noItems) {
+            const advanced = page.locator('.story-create-advanced');
+            if (await advanced.count() && !await advanced.evaluate(details => details.open)) {
+                await advanced.locator('summary').click();
+            }
+        }
         if (generations.length !== 9) {
             await page.locator('.story-create-gen-preset[data-preset="custom"]').click();
             for (let gen = 1; gen <= 9; gen++) {
                 await page.locator('#story-gen-cb-' + gen).setChecked(generations.includes(gen));
             }
-        }
-        const seedInput = page.locator('#story-create-seed');
-        const supportsSeedField = (await seedInput.count()) > 0;
-        if (supportsSeedField || noItems) {
-            if (!await seedInput.isVisible()) await page.locator('.story-create-advanced summary').click();
         }
         if (noItems) await page.locator('#story-no-item-run').check();
         if (supportsSeedField) {
@@ -452,7 +455,7 @@ async function main() {
                         await run('#story-catch-run-btn:enabled:visible', `leave-wild-encounter-${eventName}`);
                 } else if (view.screens.includes('screen-collection') && !viewedDex) {
                     await page.locator('#pdex-entry-title').waitFor({ state: 'visible', timeout: 6000 });
-                    advanced = await run('#screen-collection .story-collection-head button', 'catch-dex-entry');
+                    advanced = await run('#screen-collection .pdex-entry button:has-text("Back to Catch")', 'catch-dex-entry');
                     if (advanced) {
                         coverage.catchDex = true;
                         viewedDex = true;

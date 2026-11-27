@@ -5,12 +5,13 @@
 //   node --test tests/suites/vs-intro-v27.test.js
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine } from '../helpers/load-engine.js';
 
 let E, W, ST, SER;
 before(async () => {
   E = await loadEngine();
   W = E.window;
+  installWritableStorage(W);
   ST = W.__storyTest;
   SER = ST.STORY_EVENTS_RAW;
   W.__vsInputArmMs = 0; // buffered-input guard off under the harness

@@ -9,7 +9,7 @@
 //   node --test tests/suites/story-tutor-nature-ev-rec.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const w = eng.window;
@@ -70,6 +70,7 @@ test('EV Trainer recommended preset carries the role label + archetype spread', 
 });
 
 test('the recommended EV card uses legal payment paths and previews early redistribution', async () => {
+  installWritableStorage(w);
   const run = ST.sm;
   const document = w.document;
   run.active = true;
@@ -101,4 +102,7 @@ test('the recommended EV card uses legal payment paths and previews early redist
   await w.StoryMode.evTrainerApplyPresetWithVitamin(0, 'rec-role');
   assert.equal(run.inventory.vitamin, undefined);
   assert.deepEqual(run.team[0].build.evs, w._evTrainerRecPreset(PHYS_FAST).evs);
+  const saved = JSON.parse(w.localStorage.getItem('pbs_story_save'));
+  assert.equal(saved.inventory.vitamin, undefined);
+  assert.deepEqual(saved.team[0].build.evs, { ...run.team[0].build.evs });
 });

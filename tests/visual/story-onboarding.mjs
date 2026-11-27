@@ -70,7 +70,7 @@ try {
     await page.getByRole('button', { name: 'Settings', exact: true }).tap();
     const settings = page.getByRole('dialog', { name: 'Settings', exact: true });
     await settings.getByRole('button', { name: 'Data', exact: true }).tap();
-    await settings.getByRole('button', { name: 'Force Continue', exact: true }).waitFor();
+    assert.equal(await settings.getByRole('button', { name: 'Force Continue', exact: true }).isVisible(), false, 'idle Settings hides battle recovery');
     await settings.getByRole('button', { name: 'Close settings', exact: true }).tap();
     await page.getByRole('button', { name: /New Adventure/ }).tap();
 
@@ -81,11 +81,40 @@ try {
     assert.equal(await name.evaluate(el => el === document.activeElement), false, `${profile} opens without focusing the input`);
     assert.equal(await page.locator('#story-create-fields').evaluate(el => el.scrollTop), 0);
     const avatar = page.locator('#story-create-sprite');
+    const normal = page.getByRole('radio', { name: 'Normal', exact: true });
+    const hard = page.getByRole('radio', { name: 'Hard', exact: true });
+    const difficultyNote = page.locator('#story-create-difficulty-note');
+    assert.equal(await normal.getAttribute('aria-checked'), 'true');
+    assert.equal(await hard.getAttribute('tabindex'), '-1');
+    await normal.press('ArrowRight');
+    assert.equal(await hard.getAttribute('aria-checked'), 'true');
+    assert.ok(await hard.evaluate(el => el === document.activeElement));
+    assert.match(await difficultyNote.innerText(), /Stronger opponents/);
+    await hard.press('ArrowLeft');
+    assert.equal(await normal.getAttribute('aria-checked'), 'true');
+    assert.match(await difficultyNote.innerText(), /Standard battle/);
+    const advanced = page.locator('.story-create-advanced');
+    assert.equal(await advanced.getAttribute('open'), null);
+    assert.equal(await page.locator('#story-create-rules-summary').innerText(), 'All generations');
+    await advanced.locator('summary').press('Enter');
+    const generations = advanced.getByRole('radiogroup', { name: 'Generation preset' });
+    const allGens = generations.getByRole('radio', { name: 'All Gens' });
+    await allGens.press('ArrowRight');
+    const kanto = generations.getByRole('radio', { name: 'Kanto only' });
+    assert.equal(await kanto.getAttribute('aria-checked'), 'true');
+    assert.equal(await page.locator('#story-gen-cb-2').isChecked(), false);
+    await kanto.press('ArrowLeft');
+    assert.equal(await allGens.getAttribute('aria-checked'), 'true');
+    assert.equal(await page.locator('#story-gen-cb-2').isChecked(), true);
+    await advanced.locator('summary').press('Enter');
+    await page.locator('#story-create-fields').evaluate(el => { el.scrollTop = 0; });
     await capture('trainer');
     for (const label of ['Previous sprite', /Random/, 'Next sprite']) {
       const before = await avatar.getAttribute('src');
+      const beforeLabel = await avatar.getAttribute('alt');
       await tapInView(page, page.getByRole('button', { name: label }), `${profile} ${label}`);
       assert.notEqual(await avatar.getAttribute('src'), before);
+      assert.notEqual(await avatar.getAttribute('alt'), beforeLabel);
     }
     await tapInView(page, begin, `${profile} Begin before name`);
     assert.equal(await name.getAttribute('aria-invalid'), 'true');

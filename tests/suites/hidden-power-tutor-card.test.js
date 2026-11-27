@@ -14,7 +14,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadEngine, openTutorMon } from '../helpers/load-engine.js';
+import { installWritableStorage, loadEngine, openTutorMon } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
 const w = eng.window;
@@ -111,6 +111,7 @@ test('an equipped Hidden Power has one card with the real move name for Forget',
 });
 
 test('one favor changes an equipped Hidden Power in place only after confirmation', async t => {
+  installWritableStorage(w);
   prime({ choose: true });
   const [partner] = ST.sm.team;
   partner.build.m.push('Hidden Power Ice');
@@ -152,4 +153,7 @@ test('one favor changes an equipped Hidden Power in place only after confirmatio
   assert.equal(ST.sm.inventory.heartScale, 1);
   assert.equal(ST.sm.hiddenPowerChoosePending, false);
   assert.equal(host().querySelector('[data-hp-retune]'), null);
+  const saved = JSON.parse(w.localStorage.getItem('pbs_story_save'));
+  assert.deepEqual(saved.team[0].build.m, ['Earthquake', 'Hidden Power Fire']);
+  assert.equal(saved.hiddenPowerChoosePending, false);
 });

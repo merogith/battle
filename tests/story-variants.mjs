@@ -46,6 +46,7 @@ async function boot() {
   const dom = new JSDOM(stripped, {
     url: `file://${BATTLE_HTML_PATH}`, runScripts: 'dangerously', pretendToBeVisual: true,
     beforeParse(window) {
+      window.eval(readFileSync(join(ROOT, 'data/game-storage.js'), 'utf8'));
       window.__testHarness = true;
       window.fetch = makeFetchStub();
       window.HTMLCanvasElement.prototype.getContext = function () { return { fillRect:()=>{}, clearRect:()=>{}, getImageData:()=>({data:[]}), putImageData:()=>{}, createImageData:()=>({data:[]}), setTransform:()=>{}, drawImage:()=>{}, save:()=>{}, fillText:()=>{}, restore:()=>{}, beginPath:()=>{}, moveTo:()=>{}, lineTo:()=>{}, closePath:()=>{}, stroke:()=>{}, translate:()=>{}, scale:()=>{}, rotate:()=>{}, arc:()=>{}, fill:()=>{}, measureText:()=>({width:0}), transform:()=>{}, rect:()=>{}, clip:()=>{} }; };

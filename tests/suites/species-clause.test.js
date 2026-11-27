@@ -69,3 +69,40 @@ describe('dedupeBySpecies', () => {
     assert.deepEqual(out.sort(), ['Garchomp', 'Pikachu', 'Snorlax']);
   });
 });
+
+describe('draft settings', () => {
+  it('keeps both generation and grade restrictions when there are fewer than 12 options', () => {
+    const names = Array.from(w.eval('getDraftPool([1], [1])'));
+    assert.ok(names.length >= 6 && names.length < 12);
+    assert.ok(w.eval('getDraftPool([1], [1]).every(name => baseStats[name].gen === 1 && getMonGrade(name, getBST(name)) === 1)'));
+  });
+
+  it('splits small pools evenly and rejects teams that the same pool cannot fill', async () => {
+    const options = `(async () => {
+      Object.assign(settings, { draftGrades: [1], partySize: 3, smartDraftPool: true });
+      try {
+        const { p1Pool, p2Pool } = await buildDraftPoolsForCurrentSettings('pvp', [1]);
+        settings.partySize = 4;
+        let error;
+        try { await buildDraftPoolsForCurrentSettings('pvp', [1]); } catch (cause) { error = cause.message; }
+        return { teams: [p1Pool.length, p2Pool.length], error };
+      } finally { window.syncBattleOptionsFromSettings(); }
+    })()`;
+    const result = await w.eval(options);
+    assert.deepEqual(Array.from(result.teams), [3, 3]);
+    assert.match(result.error, /needs 8 different species\. This pool has 6/);
+  });
+
+  it('keeps both sides unique after smart pool rebalancing', async () => {
+    const run = `(async () => {
+      Object.assign(settings, { draftGrades: [1, 2, 3, 4], partySize: 6, smartDraftPool: true });
+      for (let i = 0; i < 20; i++) {
+        const { p1Pool, p2Pool } = await buildDraftPoolsForCurrentSettings('pvp', [1]);
+        const names = [...p1Pool, ...p2Pool].map(({ name }) => draftSpeciesOf(name));
+        if (names.length !== 16 || new Set(names).size !== 16) return false;
+      }
+      return true;
+    })()`;
+    assert.equal(await w.eval(run), true);
+  });
+});

@@ -4,6 +4,8 @@
 
     const workers = navigator.serviceWorker;
     if (!workers) return;
+    const currentScript = window.document?.currentScript?.src;
+    const workerUrl = currentScript ? new URL('sw.js', currentScript) : 'sw.js';
     let pending;
     let retryTimer;
     let applyRequest;
@@ -58,7 +60,7 @@
         else window.location.reload();
     });
 
-    function waitForVerification(worker) {
+    function waitForVerification(worker, untilActive = false) {
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => finish(new Error('The update is taking longer than expected.')), 45000);
             function finish(error) {
@@ -68,7 +70,7 @@
                 else resolve(worker.state);
             }
             function onStateChange() {
-                if (['installed', 'activating', 'activated'].includes(worker.state)) finish();
+                if (worker.state === 'activated' || (!untilActive && ['installed', 'activating', 'activated'].includes(worker.state))) finish();
                 else if (worker.state === 'redundant') finish(new Error('The new game files could not be installed.'));
             }
             worker.addEventListener('statechange', onStateChange);
@@ -117,8 +119,15 @@
 
     // A verified worker can stay installed while an open game finishes its work.
     window.checkForGameUpdate = async function (onInstalling) {
-        const registration = await workers.getRegistration();
-        if (!registration) return null;
+        let registration = await workers.getRegistration();
+        if (!registration) {
+            registration = await workers.register(workerUrl);
+            const first = registration.installing || registration.waiting || registration.active;
+            if (!first) throw new Error('The game installer did not start.');
+            onInstalling?.();
+            await waitForVerification(first, true);
+            return 'setup';
+        }
         const active = registration.active;
         let candidate = registration.installing || registration.waiting;
         const rememberCandidate = () => { candidate = registration.installing || candidate; };

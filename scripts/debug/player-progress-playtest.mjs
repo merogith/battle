@@ -28,7 +28,7 @@ async function newPhone(viewport) {
   const phone = await context.newPage();
   phone.setDefaultTimeout(6000);
   phone.on('pageerror', error => pageErrors.push({ severity: 'error', area: current, message: error.message }));
-  await phone.goto(url.href, { waitUntil: 'domcontentloaded' });
+  await phone.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await phone.locator('#app-loading-overlay').waitFor({ state: 'hidden', timeout: 25000 });
   return phone;
 }
@@ -106,11 +106,11 @@ try {
   await visible('[data-diff="challenge"]').click();
   assert.ok(await visible('#story-create-diff-kaizo-hint').isVisible());
   await visible('[data-diff="normal"]').click();
+  await visible('.story-create-advanced summary').click();
   await visible('[data-preset="custom"].story-create-gen-preset').click();
   await visible('#story-gen-cb-9').uncheck();
   assert.equal(await visible('#story-gen-cb-9').isChecked(), false);
   await visible('[data-preset="all"].story-create-gen-preset').click();
-  await visible('.story-create-advanced summary').click();
   for (const id of ['#story-mech-mega', '#story-mech-z', '#story-mech-dyna', '#story-mech-tera', '#story-mode-classic-rb']) {
     assert.equal(await visible(id).isChecked(), true);
   }

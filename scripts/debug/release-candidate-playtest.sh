@@ -58,23 +58,40 @@ run_case chapters-chromium env BATTLE_TEST_ENGINE=chromium BATTLE_PLAYTEST_OUT="
   node scripts/debug/player-chapters-playtest.mjs
 run_case chapters-webkit env BATTLE_TEST_ENGINE=webkit BATTLE_PLAYTEST_OUT="$output/chapters-webkit" \
   node scripts/debug/player-chapters-playtest.mjs
-run_case competitive env BATTLE_TEST_OFFLINE=1 BATTLE_COMPETITIVE_SHOTS="$output/competitive" \
+run_case chapter-availability node tests/visual/chapter-availability.mjs
+run_case save-recovery-integrity node tests/visual/save-recovery-integrity.mjs
+run_case competitive env BATTLE_TEST_OFFLINE=1 BATTLE_ARENA_COMPLETE_FORMATS=1 BATTLE_COMPETITIVE_SHOTS="$output/competitive" \
   npm run test:competitive:browser
 run_case competitive-motion node tests/visual/competitive-motion.mjs
 run_case battle-motion-catalog node tests/visual/battle-motion-catalog.mjs
+run_case combat-detail node tests/visual/combat-detail-regression.mjs
 run_case native-room-mock env BATTLE_TEST_ROOM_PIVOT=1 node tests/visual/online-native-room.mjs
 run_case native-room-reconnect env BATTLE_TEST_ROOM_RECONNECT=1 node tests/visual/online-native-room.mjs
 run_case native-room-setup-timeout env BATTLE_TEST_ROOM_SETUP_TIMEOUT=1 node tests/visual/online-native-room.mjs
+run_case native-room-host-rules env BATTLE_TEST_ROOM_HOST_RULES=1 node tests/visual/online-native-room.mjs
+run_case native-room-series env BATTLE_TEST_ROOM_SERIES=1 node tests/visual/online-native-room.mjs
+run_case native-room-host-pivot env BATTLE_TEST_ROOM_PIVOT=1 BATTLE_TEST_ROOM_PIVOT_ROLE=host BATTLE_TEST_ROOM_SWAP_DEVICES=1 \
+  BATTLE_TEST_ROOM_LATENCY_MS=180 node tests/visual/online-native-room.mjs
+run_case native-room-replacement-timeout env BATTLE_TEST_ROOM_PIVOT=1 BATTLE_TEST_ROOM_REPLACEMENT_TIMEOUT=1 node tests/visual/online-native-room.mjs
+run_case native-room-parallel-draft env BATTLE_TEST_ROOM_PIVOT=1 BATTLE_TEST_ROOM_PARALLEL_DRAFT=1 node tests/visual/online-native-room.mjs
+run_case native-room-draft-timeout env BATTLE_TEST_ROOM_PIVOT=1 BATTLE_TEST_ROOM_PARALLEL_DRAFT=1 BATTLE_TEST_ROOM_DRAFT_TIMEOUT=1 node tests/visual/online-native-room.mjs
+run_case native-room-draft-retry env BATTLE_TEST_ROOM_PIVOT=1 BATTLE_TEST_ROOM_DRAFT_RECOVERY=1 node tests/visual/online-native-room.mjs
+for departure in host-run guest-run guest-settings host-back guest-rejected guest-reconnect host-draft host-waiting; do
+  run_case "native-room-$departure" env BATTLE_TEST_ROOM_DEPARTURE="$departure" node tests/visual/online-native-room.mjs
+done
+run_case native-room-series-departure env BATTLE_TEST_ROOM_SERIES=1 BATTLE_TEST_ROOM_DEPARTURE=guest-series node tests/visual/online-native-room.mjs
+run_case native-room-replacement-departure env BATTLE_TEST_ROOM_PIVOT=1 BATTLE_TEST_ROOM_DEPARTURE=guest-replacement node tests/visual/online-native-room.mjs
 
 for visual in deferred-startup classic-native-pivot story-retry-save story-exact-resume keyboard-navigation story-town-tools story-city-errands-and-bag \
   story-starter-parity story-cinematic-hierarchy story-boss-phases story-audio story-side-activities \
   story-first-gym-coach story-north-road-world story-signature-encounters story-gym-intermission story-dialogue battle-motion \
-  story-raid-ordinary-win; do
+  story-raid-ordinary-win battle-long-session app-shell-controls crucible-field-tools field-tools-integrity; do
   run_case "$visual" env BATTLE_PLAYTEST_OUT="$output/$visual" node "tests/visual/$visual.mjs"
 done
 run_case battle-motion-webkit env BATTLE_TEST_ENGINE=webkit node tests/visual/battle-motion.mjs
 run_case battle-motion-firefox env BATTLE_TEST_ENGINE=firefox node tests/visual/battle-motion.mjs
 run_case battle-responsive env BATTLE_MAIN_RES_SHOTS="$output/battle-responsive" node tests/visual/battle-responsive.mjs
+run_case navigation-unification node tests/visual/navigation-unification.mjs
 run_case interface-polish env BATTLE_INTERFACE_OUT="$output/interface-polish" node tests/visual/interface-polish.mjs
 run_case story-onboarding env BATTLE_ONBOARDING_OUT="$output/story-onboarding" node tests/visual/story-onboarding.mjs
 run_case story-city-notifications env BATTLE_CITY_OUT="$output/story-city-notifications" node tests/visual/story-city-notifications.mjs
@@ -83,7 +100,10 @@ run_case story-milestone-actions env BATTLE_MILESTONE_SHOTS="$output/story-miles
 run_case story-legendary-capture env BATTLE_TEST_SCREENSHOTS="$output/story-legendary-capture" node tests/visual/story-legendary-capture.mjs
 run_case story-frontier-challenges env BATTLE_FRONTIER_OUT="$output/story-frontier-challenges" node tests/visual/story-frontier-challenges.mjs
 run_case camp env BATTLE_PLAYTEST_OUT="$output/camp" node scripts/debug/player-camp-playtest.mjs
+run_case safari-underground env BATTLE_PLAYTEST_PHASE=safari-underground BATTLE_PLAYTEST_OUT="$output/safari-underground" \
+  node scripts/debug/player-postgame-playtest.mjs
 if [[ "${BATTLE_CANDIDATE_STATEFUL:-false}" == true ]]; then
+  run_case facilities env BATTLE_PLAYTEST_OUT="$output/facilities" node scripts/debug/player-facilities-playtest.mjs
   run_case stateful env BATTLE_PLAYTEST_OUT="$output/stateful" node scripts/debug/player-stateful-playtest.mjs
 fi
 

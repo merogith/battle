@@ -12,7 +12,9 @@ fixture.searchParams.set('testmega', '1');
 const report = {
   status: 'passed',
   fixture: 'City 7 debug save with six badges and 50,000 gold. Party IDs, a Vulpix, and one HP Up are seeded for facility checks.',
-  viewport: compact ? { width: 568, height: 260 } : { width: 390, height: 844 },
+  viewport: compact ? { width: 568, height: 260 }
+    : process.env.BATTLE_FACILITY_NARROW === '1' ? { width: 320, height: 568 }
+      : { width: 390, height: 844 },
   findings: [],
   observations: [],
   trace: [],
@@ -96,6 +98,42 @@ async function assertGoldIsClear(goldSelector) {
   assert.ok(gold.x + gold.width <= gear.x, 'Settings must leave the gold total readable');
 }
 
+async function assertHeaderFits(facility) {
+  const layout = await facility.evaluate(screen => {
+    const headers = screen.querySelectorAll('.story-shop-header-row, .story-link-header-row');
+    const header = [...headers].find(el => el.getBoundingClientRect().height);
+    if (!header) return null;
+    const title = header.querySelector('.story-screen-head-text');
+    const back = header.querySelector('.story-shop-back-btn');
+    const gear = document.querySelector('button.icon-btn.settings-btn');
+    const talk = header.querySelector('.story-npc-dialog > summary');
+    const gold = header.querySelector('.story-gold-inline');
+    const titleText = document.createRange();
+    titleText.selectNodeContents(title);
+    const labels = [
+      ...[...titleText.getClientRects()].map(box => ['title', box]),
+      ...[back, gear, talk, gold].filter(Boolean).map(el => [el.textContent.trim() || el.getAttribute('aria-label'), el.getBoundingClientRect()]),
+    ].filter(([, box]) => box.width > 0 && box.height > 0);
+    const overlap = labels.flatMap(([label, box], i) => labels.slice(i + 1).filter(([otherLabel, other]) => label !== otherLabel
+      && Math.min(box.right, other.right) - Math.max(box.left, other.left) > 1
+      && Math.min(box.bottom, other.bottom) - Math.max(box.top, other.top) > 1)
+      .map(([otherLabel]) => [label, otherLabel]));
+    const frame = header.getBoundingClientRect();
+    return {
+      clipped: labels.filter(([, box]) => box.left < frame.left - 1 || box.right > frame.right + 1).map(([label]) => label),
+      overlap,
+      back: [back.getBoundingClientRect().width, back.getBoundingClientRect().height],
+      font: getComputedStyle(title).fontFamily,
+    };
+  });
+  assert.ok(layout, 'the facility header is visible');
+  assert.deepEqual(layout.overlap, [], 'facility title, Back, Talk, Gold and Settings must not cross');
+  assert.deepEqual(layout.clipped, [], 'facility header labels must remain in its frame');
+  assert.ok(layout.back.every(size => size >= 43), 'facility Back has a touch-sized target');
+  assert.match(layout.font, /system-ui/);
+  return layout;
+}
+
 async function mark(label, detail) {
   const state = await uiState();
   const screenshot = `${String(report.trace.length + 1).padStart(2, '0')}-${label}.png`;
@@ -127,6 +165,7 @@ async function decide(label, evidence) {
 async function back(screen) {
   const control = page.locator(`#${screen} .story-shop-back-btn`);
   await ready(control);
+  await assertHeaderFits(page.locator(`#${screen}`));
   await control.click();
   await ready(city);
 }
@@ -175,6 +214,7 @@ try {
     const charizard = run.team.find(slot => slot.name === 'Charizard');
     charizard.build.ivs = { ...charizard.build.ivs, hp: 18 };
     run.inventory.hpUp = 1;
+    for (const id of ['protein', 'iron', 'calcium', 'zinc', 'carbos']) run.inventory[id] = 1200;
     window.StoryMode.upgrades.save();
   });
   const initial = await saved();
@@ -248,6 +288,28 @@ try {
     const partner = facility.locator('.story-tutor-mon-toggle').filter({ hasText: 'Charizard' });
     await ready(partner);
     await assertGoldIsClear('#story-tutor-gold');
+    if (kind === 'move') {
+      const info = facility.getByRole('button', { name: 'Summary for Charizard', exact: true });
+      await partner.focus();
+      await page.keyboard.press('Tab');
+      assert.equal(await info.evaluate(button => button === document.activeElement), true, 'Summary follows the expansion control in tab order');
+      assert.ok(await info.evaluate(button => {
+        const rect = button.getBoundingClientRect();
+        return rect.width >= 43 && rect.height >= 43 && button.previousElementSibling.classList.contains('story-tutor-mon-toggle');
+      }));
+      const expanded = await partner.getAttribute('aria-expanded');
+      const summary = page.locator('#modal-summary');
+      for (const key of ['Enter', 'Space']) {
+        await page.keyboard.press(key);
+        await summary.waitFor({ state: 'visible' });
+        assert.match(await summary.locator('#sum-header-name').innerText(), /Charizard/);
+        await page.keyboard.press('Escape');
+        await summary.waitFor({ state: 'hidden' });
+        await page.waitForFunction(() => document.activeElement?.matches('.story-mon-info-btn'));
+        assert.equal(await info.evaluate(button => button === document.activeElement), true);
+        assert.equal(await partner.getAttribute('aria-expanded'), expanded, 'Inspecting never changes the expanded card');
+      }
+    }
     await partner.tap();
     if (kind === 'nature') await facility.getByText('Compare all natures', { exact: true }).tap();
     const option = facility.locator(optionSelector).first();
@@ -263,12 +325,15 @@ try {
     assert.match(confirmation, /Confirm/i);
     if (key === 'tutor') {
       await page.evaluate(() => window.showToast('💾 Saved', 1100, { saved: true }));
-      const visibility = await page.waitForFunction(() => {
-        const toast = document.querySelector('#toast-host .story-save-toast');
-        return toast && getComputedStyle(toast).visibility;
-      });
-      assert.equal(await visibility.jsonValue(), 'hidden',
-        'a routine save receipt must leave the lesson price and replacement readable');
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+      assert.ok(await apply.evaluate(button => {
+        const bar = button.closest('.tx-confirm-bar').getBoundingClientRect();
+        return [...document.querySelectorAll('.story-save-toast')].every(toast => {
+          const box = toast.getBoundingClientRect();
+          return getComputedStyle(toast).visibility === 'hidden' || !box.width || !box.height
+            || box.bottom <= bar.top || box.top >= bar.bottom || box.right <= bar.left || box.left >= bar.right;
+        });
+      }), 'a routine save receipt must leave the lesson price and replacement readable');
     }
     await mark(`${key}-preview`, { selection });
     await apply.tap();
@@ -354,6 +419,12 @@ try {
     await partner.tap();
     const type = facility.locator('.tx-tera-grid [data-tera-type]:not([data-current="1"])').first();
     await ready(type);
+    const types = await facility.locator('[data-tera-type]').evaluateAll(buttons => buttons.map(button => button.dataset.teraType));
+    assert.equal(types.length, 18, 'all ordinary Tera types are present');
+    assert.equal(new Set(types).size, 18, 'each Tera type is a single action');
+    const suggested = facility.locator('[data-tera-recommended]');
+    assert.ok(await suggested.count(), 'Charizard has a suggested type');
+    assert.match(await suggested.first().getAttribute('aria-label'), /suggested/);
     const selection = await type.getAttribute('data-tera-type');
     const before = await saved();
     await type.tap();
@@ -407,9 +478,21 @@ try {
   await step('fan-club', async () => {
     await visit('fanclub');
     const facility = page.locator('#screen-story-fanclub');
+    await ready(facility);
+    const header = await assertHeaderFits(facility);
     const partner = facility.locator('.story-tutor-mon-toggle').filter({ hasText: 'Charizard' });
     await ready(partner);
     await partner.click();
+    assert.equal(await facility.locator('.fanclub-stat-stock').count(), 6);
+    assert.ok(await facility.locator('.fanclub-stat').evaluateAll(rows => rows.every(row => {
+      const bounds = row.getBoundingClientRect();
+      const stock = row.querySelector('.fanclub-stat-stock').getBoundingClientRect();
+      const lower = row.querySelector('button').getBoundingClientRect();
+      const add = row.querySelector('.fanclub-add').getBoundingClientRect();
+      return stock.right <= lower.left && lower.right <= add.left && add.right <= bounds.right
+        && add.width >= 43 && add.height >= 43;
+    })), 'large vitamin counts remain beside each stat and clear of the actions');
+    await mark('fan-club-stock-layout', header);
     const use = facility.locator('button[onclick*="applyPermBoost(\'hpUp\'"]:enabled');
     await ready(use);
     const before = await saved();
@@ -536,9 +619,17 @@ try {
     assert.equal(await shop.locator('.story-artifact-card .story-shop-buy-btn:enabled').count(), 0);
     await mark('relic-claimed-inactive', { id, cost: 5000 });
 
-    await shop.getByRole('button', { name: /Manage/ }).click();
+    const manage = shop.getByRole('button', { name: 'Manage', exact: true });
+    await manage.press('Enter');
     const hall = page.locator('#screen-story-artifacts');
     const enable = hall.getByRole('button', { name: 'Enable Relic' });
+    await ready(enable);
+    const activeTab = hall.getByRole('button', { name: 'Manage', exact: true, pressed: true });
+    assert.equal(await activeTab.evaluate(button => button === document.activeElement), true, 'Relic section navigation transfers focus');
+    await hall.getByRole('button', { name: 'Browse', exact: true }).press('Enter');
+    const browse = shop.getByRole('button', { name: 'Browse', exact: true, pressed: true });
+    assert.equal(await browse.evaluate(button => button === document.activeElement), true);
+    await manage.press('Enter');
     await ready(enable);
     await hall.getByText('Electric Plate Shard', { exact: true }).waitFor();
     assert.match(await hall.locator('.relic-rule').innerText(), /Electric-type moves deal 30% more damage/);

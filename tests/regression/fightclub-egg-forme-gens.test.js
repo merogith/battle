@@ -17,6 +17,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { setImmediate } from 'node:timers/promises';
 import { loadEngine } from '../helpers/load-engine.js';
 
 const eng = await loadEngine();
@@ -147,7 +148,7 @@ async function rollEgg() {
   if (!btn) return null;
   btn.click();
   window._gameConfirmResult(true);
-  await Promise.resolve();
+  await setImmediate();
   const egg = (sm.team || []).find(s => s && s.isEgg) || (sm.pcBox || []).find(s => s && s.isEgg);
   // Clean overlays + reset for the next roll.
   ['story-daycare-overlay','story-daycare-scene','story-hatch-scene','story-scene-overlay']
@@ -155,21 +156,23 @@ async function rollEgg() {
   return egg ? egg.eggSpecies : null;
 }
 
+const eggTrials = 25;
+
 test('Daycare egg reward (all gens) — hatches a non-forme species', async () => {
   let eggLeaks = [], eggCount = 0;
-  for (let trial = 0; trial < 25; trial++) {
+  for (let trial = 0; trial < eggTrials; trial++) {
     setupRun([1,2,3,4,5,6,7,8,9]);
     const sp = await rollEgg();
     if (sp) { eggCount++; if (isExcluded(sp)) eggLeaks.push(sp); }
   }
-  assert.ok(eggCount > 0, `hatched ${eggCount} eggs`);
+  assert.equal(eggCount, eggTrials, 'every confirmed trade grants an egg');
   assert.equal(eggLeaks.length, 0,
     `no egg hatch species is a forme entry; leaked: ${[...new Set(eggLeaks)].join(', ')}`);
 });
 
 test('Daycare egg reward (gen 1 only) — hatch is gen-1 or parent passthrough, never a forme', async () => {
   let eggOffGen = [], eggCount2 = 0;
-  for (let trial = 0; trial < 25; trial++) {
+  for (let trial = 0; trial < eggTrials; trial++) {
     setupRun([1]);
     const sp = await rollEgg();
     if (sp) {
@@ -181,7 +184,7 @@ test('Daycare egg reward (gen 1 only) — hatch is gen-1 or parent passthrough, 
       if (isExcluded(sp)) eggOffGen.push(`${sp}(forme)`);
     }
   }
-  assert.ok(eggCount2 > 0, `hatched ${eggCount2} eggs (gen-1 run)`);
+  assert.equal(eggCount2, eggTrials, 'every confirmed gen-1 trade grants an egg');
   assert.equal(eggOffGen.length, 0,
     `every gen-1 egg hatch is gen-1 (or parent passthrough), never a forme; off-toggle: ${[...new Set(eggOffGen)].join(', ')}`);
 });

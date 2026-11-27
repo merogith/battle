@@ -91,6 +91,22 @@ try {
       assert.equal(await summary.getByRole('button', { name: 'Previous Pokémon' }).evaluate(element => element === document.activeElement), true);
       await summary.locator('.sum-corner-close:visible, .sum-close-btn:visible').first().click();
 
+      if (width === 320) {
+        // A lost turn can leave both command panels hidden while the Story Bag
+        // still owns the keyboard. The watchdog must clear the dialog lifecycle
+        // before focusing the restored command.
+        assert.equal(await page.evaluate(() => {
+          window.openModal('modal-story-bag');
+          document.getElementById('command-menu').classList.add('hidden');
+          document.getElementById('move-menu').classList.add('hidden');
+          return document.getElementById('screen-battle').hasAttribute('inert');
+        }), true, 'the visible Story Bag owns focus before recovery');
+        assert.equal(await page.evaluate(() => window.__recoverBattleSoftLock()), true);
+        const bag = page.locator('#modal-story-bag');
+        await bag.waitFor({ state: 'hidden' });
+        assert.equal(await battle.getAttribute('inert'), null, 'the restored battle accepts input again');
+        await page.waitForFunction(() => document.activeElement === document.querySelector('#command-menu .battle-cmd-btn:not([disabled])'));
+      }
       const fieldHeight = await battle.locator('#battle-field').evaluate(element => element.clientHeight);
       await fight.click();
       const tiles = battle.locator('#move-menu .battle-btn-move');
